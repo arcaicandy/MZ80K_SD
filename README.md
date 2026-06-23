@@ -1,92 +1,91 @@
-# MZ-80シリーズにSD-Cardとのロード、セーブ機能を
+# Adding SD Card Load/Save Functionality to the MZ-80 Series
 
 ![MZ-80K_SD](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/MZ-80K_SD.jpg)
 
-　ROMをF000Hに置くことでMZ-80シリーズにフロッピーディスク装置を外付けした際に起動するためのFDコマンドを利用できますが、フロッピーディスク装置の代わりにSD-CARDを繋いでしまおうというものです。
+　By placing the ROM at F000H, you can use the FD command that launches when an external floppy disk drive is connected to the MZ-80 series — but instead of a floppy disk drive, this project connects an SD card.
 
-#### 　2025.7.31追記 MZ-80K、MZ-80K2、MZ-80K2E、MZ-80C、MZ-1200、MZ-700で動作しますが、MZ-700はRAMとの切替動作をサポートしたMZ-700_SDもあります。
+#### 　Added 2025.7.31: Works with the MZ-80K, MZ-80K2, MZ-80K2E, MZ-80C, MZ-1200, and MZ-700. Note that MZ-700_SD, which supports RAM switching, is also available for the MZ-700.
 
-　アダプタを繋ぐだけでもBASIC SP-5030が約4秒で起動できるようになるなどアプリケーションランチャーとして便利に使えますが、MONITOR SP-1002にパッチをあてることでBASIC SP-5030はもちろん、ほとんどのMZ-80KアプリケーションがSD-CARD対応となります。
+　Simply connecting the adapter makes BASIC SP-5030 launchable in about 4 seconds, making it convenient to use as an application launcher. By patching MONITOR SP-1002, not only BASIC SP-5030 but most MZ-80K applications become SD card compatible.
 
-### 本体ROMをパッチを当てたMONITOR SP-1002に交換しなくてもアプリケーションからのロード、セーブをSD対応とさせるパッチあてWindows用ツール「CMT2SD_CHECK」を公開しました。(2022.6.29)
-### 詳細は、CMT2SD_CHECKフォルダ中のREADME.mdを参照してください。
+### We have released a Windows tool "CMT2SD_CHECK" that patches applications for SD support without replacing the system ROM with a patched MONITOR SP-1002. (2022.6.29)
+### See README.md in the CMT2SD_CHECK folder for details.
 
-　MZ-700もMZ-80K用アプリケーションについては同様にSD-CARD対応となりますが、標準添付のS-BASIC、Hu-BASICともMONITOR 1Z-009A、1Z-009BのCMTルーチンを利用していないためMONITOR 1Z-009A、1Z-009BにパッチをあてただけではSD-CARD対応とならず、起動後はCMTでの運用となります。
+　The MZ-700 similarly supports SD cards for MZ-80K applications, but since the bundled S-BASIC and Hu-BASIC do not use the CMT routines of MONITOR 1Z-009A or 1Z-009B, simply patching those monitors does not enable SD card support — after booting, CMT operation is used instead.
 
-#### (2021.12.14追記:S-BASICについてSD-CARD対応とするパッチを公開しました。)
+#### (Added 2021.12.14: A patch to enable SD card support for S-BASIC has been released.)
 
-#### (2024. 6.29追記:S-BASICについて従来プロッタのCIRCLE命令をつぶしてSDアクセスルーチンを置いていましたが、未使用となっているキーワードテーブルの隙間に移動しました。)
+#### (Added 2024.6.29: Previously, the CIRCLE instruction of the legacy plotter was overwritten to place the SD access routine, but it has been moved to unused gaps in the keyword table.)
 
+　Basically, consider the MZ-700 usable as an MZ-80K compatible machine.
 
-　基本的にはMZ-700ではMZ-80K互換機として利用できると考えてください。
+　The MZ-700 also supports FDx commands, so it can be used as an MZ-700 application launcher, but MZ-700 applications that require a full 64K RAM (not advertised as MZ-80K compatible) may not load.
 
-　また、MZ-700もFDxコマンドは機能しますのでMZ-700用アプリケーションランチャーとして使えますが、MZ-80K対応とうたっていない64KオールRAMを前提としているMZ-700用アプリケーションはロードできない可能性があります。
+　If you have performed the "ROM disconnect switch modification" on a Rev1.5.5 or Rev1.5.3 board, after launching a MZ-700 application, switch the switch to the "700" side. Don't forget to switch back to "80K" when booting from SD again.
 
-　Rev1.5.5基板及びRev1.5.3基板で「ROM切り離しスイッチ改造」を行った方は、MZ-700用アプリケーション起動後はスイッチを「700」側に切り替えてください。再度SDから起動するときには「80K」に戻すのをお忘れなく。
+　Note that some MZ-80K software requires NZ-700, the MZ-700-compatible version of SP-1002 published in the 0h!MZ special edition ADVANCED MZ-700, in order to run on the MZ-700.
 
-　なお、一部のMZ-80K用ソフトはMZ-700で実行するにあたって、0h!MZ別冊 ADVANCED MZ-700に掲載されているSP-1002のMZ-700対応版 NZ-700が必要となるものがあります。
-
-#### (2024.10.10追記:MZ-700+MZ-80K_SDでMZ-700用アプリケーションを実行したときにMZ-80K_SDのROMとMZ-700本体のRAMが衝突しないようRev1.5.5基板では「ROM切り離しスイッチ」を取り入れましたが、これを自動で行うMZ-700_SD基板も公開しています。ただし、MZ-700_SDを作成するにはGAL16V8の入手が必要です。
+#### (Added 2024.10.10: To prevent the MZ-80K_SD ROM from conflicting with the MZ-700's RAM when running MZ-700 applications on MZ-700+MZ-80K_SD, Rev1.5.5 boards incorporate a "ROM disconnect switch." An MZ-700_SD board that does this automatically is also available. However, obtaining a GAL16V8 is required to build MZ-700_SD.
 
 https://github.com/yanataka60/MZ-700_SD
 
-#### 注）
+#### Note)
 
-　一応安定動作を確認していますが、SAVE動作によりSD-CARDに保存されたデータファイルの消失等考えられますのでファイルのバックアップをお願いします。
+　Stable operation has been confirmed, but since data files saved to the SD card by SAVE operations could potentially be lost, please back up your files.
 
-　Arduino、ROMへ書き込むための機器が別途必要となります。
+　Separate equipment is required for writing to Arduino and ROM.
 
-## 回路図
-　KiCadフォルダ内のMZ80K_SD.pdf参照
+## Schematic
+　See MZ80K_SD.pdf in the KiCad folder.
 
-[回路図](https://github.com/yanataka60/MZ80K_SD/blob/main/KiCad/MZ80k_SD/MZ80K_SD.pdf)
-![回路図](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/MZ-80K_SD_schematic.jpg)
+[Schematic](https://github.com/yanataka60/MZ80K_SD/blob/main/KiCad/MZ80k_SD/MZ80K_SD.pdf)
+![Schematic](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/MZ-80K_SD_schematic.jpg)
 
-　Rev1.5.5になりました。後述の「ROM切り離しスイッチ改造」を取り入れています。
+　Now at Rev1.5.5, incorporating the "ROM disconnect switch modification" described later.
 
-　~~Rev1.5.3になりました。秋月電子通商　AE-microSD-LLCNVとArduino用Micro SD Card Kitのどちらかを選択して使えます。~~
+　~~Now at Rev1.5.3. You can choose between Akizuki Denshi AE-microSD-LLCNV and the Arduino Micro SD Card Kit.~~
 
-　~~Rev1.5.2になりました。Rev1.5.1との違いは、外部電源での運用時にArduinoと本体の初期化のタイミングのズレにより誤動作してしまうことをArduinoのReset端子を本体のReset信号に接続し解消したことになります。~~
+　~~Now at Rev1.5.2. The difference from Rev1.5.1 is that a timing mismatch between Arduino and the system during initialization when running on external power caused malfunctions; this was resolved by connecting the Arduino's Reset pin to the system's Reset signal.~~
 
-　~~なお、Rev1.5.1の1か所をパターンカットし、2本配線を追加することでRev1.5.2相当とする方法をKAIZOUフォルダに示しました。~~
+　~~A method to bring Rev1.5.1 up to Rev1.5.2 equivalence by cutting one trace and adding two wires is shown in the KAIZOUU folder.~~
 
-## 部品
-|番号|品名|数量|備考|
+## Parts
+| Number | Part Name | Quantity | Notes |
 | ------------ | ------------ | ------------ | ------------ |
 |U1|74LS04|1||
-|U2|2764又は28C64|1|ROMの相性については後述|
+|U2|2764 or 28C64|1|See notes below regarding ROM compatibility|
 |U3|8255|1||
-|U4|Arduino_Pro_Mini_5V|1|Atmega328版を使用 168版は不可。(注1)|
+|U4|Arduino_Pro_Mini_5V|1|Use the ATmega328 version; the 168 version is not compatible. (Note 1)|
 |U5 U6|74LS30|2||
-||J2、J5のいづれか|||
-|J2|Micro SD Card Kit又は同等品|1|秋月電子通商 AE-microSD-LLCNV (注2) (注3)|
-|J5|MicroSD Card Adapter|1|Arduino等に使われる5V電源に対応したもの (注3)|
-|C1-C5|積層セラミックコンデンサ 0.1uF|5||
-|C6|電解コンデンサ 16v100uF|1||
-|S1 S2|3Pスライドスイッチ|2|秋月電子通商 SS12D01G4など|
-|S3|3Pスライドスイッチ|1|MZ-700で使わなければ80K側固定のジャンパでも可|
-|R1|カーボン抵抗 10kΩ|1|S3を使わずに80K側固定でジャンパするなら不要|
-|J4|DCジャック|1||
-|J3|コネクタ 2Pin|1|ピンヘッダで代用するときはGNDと間違えないよう1Pinで5Vだけにしたほうが良い|
-|J1|50Pinコネクタ|1||
-||50Pinケーブル|1||
-||ピンヘッダ|2Pin分|Arduino_Pro_MiniにはA4、A5用のピンヘッダが付いていないため別途調達が必要です 秋月電子通商 PH-1x40SGなど|
-||本体内から5Vを取る場合、ケーブル少々|||
-||本体ROMにパッチをあてる場合、27C32等を2532ソケットに差すためのアダプタ|||
-||ピンソケット(任意)|26Pin分|Arduino_Pro_Miniを取り外し可能としたい場合に調達します 秋月電子通商 FHU-1x42SGなど|
+||Either J2 or J5|||
+|J2|Micro SD Card Kit or equivalent|1|Akizuki Denshi AE-microSD-LLCNV (Note 2) (Note 3)|
+|J5|MicroSD Card Adapter|1|Must support 5V power as used with Arduino etc. (Note 3)|
+|C1-C5|Multilayer ceramic capacitor 0.1uF|5||
+|C6|Electrolytic capacitor 16V 100uF|1||
+|S1 S2|3-position slide switch|2|Akizuki Denshi SS12D01G4, etc.|
+|S3|3-position slide switch|1|Can be replaced with a jumper fixed to the 80K side if not used with MZ-700|
+|R1|Carbon resistor 10kΩ|1|Not needed if jumpering S3 fixed to the 80K side|
+|J4|DC jack|1||
+|J3|2-pin connector|1|If substituting with a pin header, use only 1 pin for 5V to avoid confusing it with GND|
+|J1|50-pin connector|1||
+||50-pin cable|1||
+||Pin headers|2 pins|The Arduino Pro Mini does not come with pin headers for A4 and A5, so source them separately — e.g. Akizuki Denshi PH-1x40SG|
+||A short cable if drawing 5V from inside the system|||
+||An adapter for inserting 27C32 etc. into a 2532 socket if patching the system ROM|||
+||Pin sockets (optional)|26 pins|Obtain if you want the Arduino Pro Mini to be removable — e.g. Akizuki Denshi FHU-1x42SG|
 
-　　　注1)Arduino Pro MiniはA4、A5ピンも使っています。
+　　　Note 1) The Arduino Pro Mini also uses pins A4 and A5.
 
-　　　注2)秋月電子通商　AE-microSD-LLCNVのJ1ジャンパはショートしてください。
+　　　Note 2) Short the J1 jumper on the Akizuki Denshi AE-microSD-LLCNV.
 
-　　　注3)J2又はJ5のどちらかを選択して取り付けてください。
+　　　Note 3) Install either J2 or J5 — not both.
 
-### MicroSD Card Adapterを使う(Rev1.5.3以降)
-J5に取り付けます。
+### Using a MicroSD Card Adapter (Rev1.5.3 and later)
+Install at J5.
 
-MicroSD Card Adapterについているピンヘッダを除去してハンダ付けするのが一番確実ですが、J5の穴にMicroSD Card Adapterをぴったりと押しつけ、裏から多めにハンダを流し込むことでハンダ付けをする方法もあります。なお、この方法の時にはしっかりハンダ付けが出来たかテスターで導通を確認しておいた方が安心です。
+The most reliable method is to remove the pin headers from the MicroSD Card Adapter and solder it directly, but you can also press the adapter firmly into the J5 holes and flow solder in from the back. When using this method, confirm continuity with a tester to make sure the solder joints are solid.
 
-ハンダ付けに自信のない方はJ2の秋月電子通商　AE-microSD-LLCNVをお使いください。AE-microSD-LLCNVならパワーLED、アクセスLEDが付いています。
+If you are not confident in your soldering, use the Akizuki Denshi AE-microSD-LLCNV at J2. The AE-microSD-LLCNV includes a power LED and access LED.
 
 ![MicroSD Card Adapter1](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/MicroSD%20Card%20Adapter(1).JPG)
 
@@ -97,9 +96,9 @@ MicroSD Card Adapterについているピンヘッダを除去してハンダ付
 ![MicroSD Card Adapter4](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/MicroSD%20Card%20Adapter(4).JPG)
 
 
-### MicroSD Card Adapterを使う(Rev1.5.2)
-以下のピン番号を参考に変換基板等繋ぎ方は適宜対応してください。
-|AE-microSD-LLCNVピン番号|MicroSD Card Adapterピン番号|信号名|
+### Using a MicroSD Card Adapter (Rev1.5.2)
+Refer to the following pin numbers and adapt the wiring via a conversion board as appropriate.
+| AE-microSD-LLCNV Pin No. | MicroSD Card Adapter Pin No. | Signal Name |
 | ---------------------- | -------------------------- | ---- |
 |1|2|5V|
 |4|1|GND|
@@ -111,33 +110,33 @@ MicroSD Card Adapterについているピンヘッダを除去してハンダ付
 ![MicroSD Card Adapter](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/MicroSD%20Card%20Adapter.jpg)
 
 
-## ROMプログラムについて
-　Z80フォルダ内にFD_rom1.bin、FD_rom2.bin、FD_rom.binと3つありますが、SD-CARDを利用するためのプログラムFD_rom1.bin(28C64の下位に配置)、MONITORをCMT利用に戻すためのプログラムFD_rom2.bin(28C64の上位に配置)、2つを合わせたプログラムFD_rom.binとなっています。
+## About the ROM Program
+　The Z80 folder contains three files: FD_rom1.bin, FD_rom2.bin, and FD_rom.bin. FD_rom1.bin is the program for SD card access (placed in the lower half of 28C64), FD_rom2.bin restores MONITOR to CMT operation (placed in the upper half of 28C64), and FD_rom.bin combines both.
 
-　ROMライター(TL866II Plus等)を使って2764又は28C64にFD_rom.binを書き込んでください。
+　Use a ROM writer (such as TL866II Plus) to write FD_rom.bin to a 2764 or 28C64.
 
-　28C64にFD_rom.binを書き込むことでスライドスイッチによりSDとCMTを切り替えられるようにしてあります。
+　Writing FD_rom.bin to a 28C64 allows switching between SD and CMT via a slide switch.
 
-　ただし、稼働中に切り替えるとタイミングによってはMZ-80Kが暴走する時があります。基本的には電源を切って切り替えてください。
+　However, switching while running may cause the MZ-80K to crash depending on timing. As a rule, switch only with the power off.
 
-　また、FD_rom2の領域には4023Byte分の空きエリアがあります。自由に使っていただいて構いません。
+　There is also 4023 bytes of free space in the FD_rom2 area, which you are welcome to use freely.
 
-　なお、MZ-700でMONITOR 1Z-009A、1Z-009BにMZ-80K_SD用のパッチをあてた状態でもCMT側に切り替えれば紅茶羊羹さんの「MZ⇔PC間でデータを転送する（USB版）」が問題なく使用できます。
+　When using MZ-700 with MONITOR 1Z-009A or 1Z-009B patched for MZ-80K_SD, switching to the CMT side still allows use of Kōcha Yōkan's "Transferring Data Between MZ and PC (USB Version)" without issue.
 
-## ROMの相性
-　すべての状況をテストできたわけではないのですが、ROMの個体によっては相性があるのではないかとの報告があります。
+## ROM Compatibility
+　While not every scenario has been tested, there are reports suggesting that some ROM units may have compatibility issues.
 
-　特に問題なく動いているROMと動かない個体の例が報告されているROMを以下に列挙します。
+　Below are examples of ROMs confirmed to work without issue and ROMs where non-working units have been reported.
 
-　これからROMを調達される方はなるべく「特に問題なく動いているROM」を調達したほうが無難だと思われます。
+　If you are sourcing a ROM, it is advisable to choose from the "confirmed working" list where possible.
 
-|特に問題なく動いているROM|
+| Confirmed Working ROMs |
 | ----------------------- |
 |AT28C64B                 |
 |CAT28C64BP               |
 |M2764A                   |
 
-|動かない個体の例が報告されているROM|
+| ROMs with Reported Non-Working Units |
 | --------------------------------- |
 |HN484764G                          |
 |M27C64A                            |
@@ -145,44 +144,44 @@ MicroSD Card Adapterについているピンヘッダを除去してハンダ付
 |TMS2764                            |
 |D28C64ACZ                          |
 
-## Arduinoプログラム
-　Arduino IDEを使ってArduinoフォルダ内のMZ-80K_SD.inoを書き込みます。
+## Arduino Program
+　Use the Arduino IDE to write MZ-80K_SD.ino from the Arduino folder.
 
-　SdFatライブラリを使用していますのでArduino IDEメニューのライブラリの管理からライブラリマネージャを立ち上げて「SdFat」をインストールしてください。
+　This uses the SdFat library, so open the Library Manager from the Arduino IDE menu and install "SdFat."
 
-　「SdFat」で検索すれば見つかります。「SdFat」と「SdFat - Adafruit Fork」が見つかりますが「SdFat」のほうを使っています。
+　Searching for "SdFat" will find it. Both "SdFat" and "SdFat - Adafruit Fork" will appear — use "SdFat."
 
-注)Arduinoを基板に直付けしている場合、Arduinoプログラムを書き込むときは、MZ-80K本体とは接続を外し、74LS04を外したうえで書き込んでください。
+Note) If the Arduino is soldered directly to the board, when writing the Arduino program, disconnect from the MZ-80K system and remove the 74LS04 before writing.
 
-## MZ-80Kとの接続
-　回路図J1のピン番号とMZ-80K外部拡張端子のピン番号は一致していません。ピン配置は一致していますのでJPGフォルダにある「Rev1.5.1+MZ-80K Series(6).JPG」を参考にフラットケーブルで接続してください。
+## Connecting to the MZ-80K
+　The pin numbers of schematic J1 do not match the MZ-80K external expansion connector pin numbers. The pin layout does match, so use the flat cable referring to "Rev1.5.1+MZ-80K Series(6).JPG" in the JPG folder.
 
-　MZ-700の外部拡張端子はMZ-80Kとピン配置は同じですが、ピンコネクタではなく、カードエッジコネクタです。
+　The MZ-700 external expansion connector has the same pin layout as the MZ-80K, but uses a card edge connector rather than a pin connector.
 
-![接続1](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-80K%20Series(1).JPG)
+![Connection 1](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-80K%20Series(1).JPG)
 
-![接続2](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-80K%20Series(6).JPG)
+![Connection 2](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-80K%20Series(6).JPG)
 
-![接続3](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-80K%20Series(5).JPG)
+![Connection 3](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-80K%20Series(5).JPG)
 
-![接続4](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-700.JPG)
+![Connection 4](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/Rev1.5.5%2BMZ-700.JPG)
 
-## 電源
-　MZ-80Kのバスには+5Vが出ていないため、最初はDCジャックから外部電源を供給するつもりだったのですが、本体と電源が一緒のほうが扱いが楽そうだったので本体から+5Vを引き出して供給する用のコネクタと二通りを用意しています。
+## Power Supply
+　Since the MZ-80K bus does not supply +5V, the original plan was to supply external power via the DC jack, but having the system and power supply together seemed more convenient, so two options are provided: a connector for drawing +5V from inside the system, and the DC jack for external power.
 
-　MZ-80K内部から5Vを取得するには、27C32等を2532ソケットに差すためのアダプタから引っ張ってくるのが簡単だと思います。
+　The easiest way to obtain 5V from inside the MZ-80K is to tap it from the adapter used to insert a 27C32 etc. into a 2532 socket.
 
-注)Rev1.5.1基板では、外部電源での稼働時に起動に躓くことがあるようです。内部電源での利用を推奨しますが、外部電源での稼働時にFDLコマンド等を実行しても反応が無い場合には次の手順で起動してください。
+Note) With the Rev1.5.1 board, startup may occasionally fail when running on external power. Internal power is recommended, but if the FDL command etc. does not respond when running on external power, start up using the following procedure:
 
-　　MZ-80K_SDの電源を入れる -> MZ-80Kの電源を入れる -> Arduinoをリセットする。
+　　Power on MZ-80K_SD → Power on MZ-80K → Reset the Arduino.
 
-なお、Rev1.5.1基板に対して1か所をパターンカットし、2本配線を追加することでRev1.5.2基板相当とすることができます。詳しくはKAIZOUフォルダを参照してください。
+The Rev1.5.1 board can be brought to Rev1.5.2 equivalence by cutting one trace and adding two wires. See the KAIZOUU folder for details.
 
-　Rev1.5.2基板でも機体によっては、電源ON時に起動に躓くことがあるようです。本体をリセットすることで解消できますが、気になる方はArduinoプログラム74行目の「delay(1000)」を「delay(1500)」ぐらいにしてみてください。
+　Even with the Rev1.5.2 board, some units may occasionally fail to start on power-on. Resetting the system will resolve this, but if it bothers you, try changing "delay(1000)" on line 74 of the Arduino program to something like "delay(1500)."
 
 
-## MONITOR ROMの差し替え
-　MONITOR SP-1002、MONITOR 1Z-009A、1Z-009Bとも以下のパッチをあててください。
+## Replacing the MONITOR ROM
+　Apply the following patches to MONITOR SP-1002, MONITOR 1Z-009A, and 1Z-009B.
 
 　0437 : D5 → C3
 
@@ -214,26 +213,26 @@ MicroSD Card Adapterについているピンヘッダを除去してハンダ付
 
 　058B : E5 → F0
 
-　MZ-700 MONITOR 1Z-009A、1Z-009Bについては、RAMにコピーしたMONITORにパッチを当てることでパッチを当てたROMに差し替えなくても済むように「FT.MZT」を作成しました。
+　For MZ-700 MONITOR 1Z-009A and 1Z-009B, "FT.MZT" has been created so that patching a RAM copy of MONITOR eliminates the need to replace the ROM.
 
-　「FT.MZT」をSD-CARDのルートに置き、FD FT[CR]を実行することでRAM MONITORに制御が移ります。
+　Place "FT.MZT" in the root of the SD card and execute FD FT[CR] to transfer control to the RAM MONITOR.
 
-　「FT.MZT」と同等の動作をするFDZコマンドを新設しました。FDZコマンドを使えば「FT.MZT」は必要ありません。
+　A new FDZ command has been added that performs the same function as "FT.MZT." With FDZ, "FT.MZT" is no longer needed.
 
 
-　また、紅茶羊羹さんの「MZ⇔PC間でデータを転送する（USB版）」でMZTrans用パッチをMONITOR 1Z-009A、1Z-009Bに当てているとFコマンドが使えないので以下のパッチを当てることで'#'コマンドをつぶして'F'コマンドを復活させます。
+　Also, if you have applied the MZTrans patch for Kōcha Yōkan's "Transferring Data Between MZ and PC (USB Version)" to MONITOR 1Z-009A or 1Z-009B, the F command will be unavailable. Apply the following patch to disable the '#' command and restore the 'F' command.
 
 　00D2 : 23 → 46
 
 　00D4 : 86 → 21
 
-　紅茶羊羹さん作成の「TR.MZT」をSD-CARDのルートに置き、「FD TR」を実行することでMZTransを使う方法もあります。
+　Alternatively, place Kōcha Yōkan's "TR.MZT" in the root of the SD card and execute "FD TR" to use MZTrans.
 
-## BASIC SP-5030 バージョン違い
+## BASIC SP-5030 Version Differences
 
-　BASIC SP-5030には、旧・新・VER1.0Aの３種類のバージョンがあるそうで、そのうち新・VER1.0Aの二つはパッチをあてる必要があります。以下のアドレスが4049H、4069Hを指している場合には新・VER1.0Aのどちらかですので以下のように修正する必要があります。
+　There are reportedly three versions of BASIC SP-5030: old, new, and VER1.0A. The new and VER1.0A versions require patches. If the following addresses point to 4049H and 4069H, it is one of the new or VER1.0A versions and must be corrected as follows.
 
-アドレスはMZTファイルのアドレスです。実アドレスは()内
+Addresses are MZT file addresses. Actual addresses are shown in parentheses.
 
 　18C5(1845) : 49 → 27
 
@@ -251,67 +250,67 @@ MicroSD Card Adapterについているピンヘッダを除去してハンダ付
 
 　1AE1(1A60) : 40 → 00
 
-## SD-CARD
-　出来れば8GB以下のSDカードを用意してください。
+## SD Card
+　Preferably use an SD card of 8GB or less.
 
-　ArduinoのSdFatライブラリは、SD規格(最大2GB)、SDHC規格(2GB～32GB)に対応していますが、SDXC規格(32GB～2TB)には対応していません。
+　The Arduino SdFat library supports the SD standard (up to 2GB) and SDHC standard (2GB–32GB), but does not support SDXC (32GB–2TB).
 
-　また、SDHC規格のSDカードであっても32GB、16GBは相性により動作しないものがあるようです。
+　Even among SDHC cards, 32GB and 16GB cards may not work due to compatibility issues.
 
-　FAT16又はFAT32が認識できます。NTFSは認識できません。
+　FAT16 and FAT32 are recognized. NTFS is not recognized.
 
-　ルートに置かれたMZTファイルのみ認識できます。(MZT以外のファイル、フォルダも表示されますがLOAD実行の対象になりません)
+　Only MZT files placed in the root directory are recognized. (Other file types and folders are displayed but will not be targeted by LOAD.)
 
-　ファイル名は「.MZT」を除いて32文字まで、ただし半角カタカナ、及び一部の記号はArduinoが認識しないので使えません。パソコンでファイル名を付けるときはアルファベット、数字および空白でファイル名をつけてください。
+　File names may be up to 32 characters excluding ".MZT," however half-width katakana and some symbols are not recognized by the Arduino and cannot be used. When naming files on a PC, use alphabetical characters, numbers, and spaces.
 
-## 操作方法
-　MONITORコマンド入力待ちから以下のコマンドが利用できます。
+## How to Use
+　The following commands are available from the MONITOR command prompt.
 
-　なお、MZ-700のフロッピーディスク装置起動コマンドは本来'F'の一文字ですが、操作方法としては'FD'に統一しました。
+　Note that the floppy disk drive launch command for MZ-700 is originally a single character 'F', but for consistency the operation uses 'FD' throughout.
 
-　以下、SD-CARD内のファイルに付けられるファイル名をDOSファイル名、MZT形式ファイルのインフォメーションブロック内ファイル名をIBFファイル名とします。
+　In the following, file names given to files on the SD card are referred to as DOS file names, and file names in the information block of MZT format files are referred to as IBF file names.
 
 ### FD[CR]
-　FDのみでDOSファイル名「0000.MZT」がLOAD及び実行されます。
+　FD alone loads and executes the DOS file named "0000.MZT."
 
-　「0000.MZT」は、パソコンでBASIC SP-5030等をリネームコピーして作成しても大丈夫ですが、FDAコマンドから作ることもできます。
+　"0000.MZT" can be created by renaming and copying BASIC SP-5030 etc. on a PC, or it can be created using the FDA command.
 
-### FD　DOSファイル名[CR]
-　DOSファイル名で指定したバイナリファイルをLOADして実行します。
+### FD　DOS filename[CR]
+　Loads and executes the binary file specified by DOS filename.
 
-　「.MZT」は省略可能です。
+　".MZT" may be omitted.
 
-　MONITORのLOADコマンドの代替として使えます。なお、LOADコマンドも使えますが、アプリケーションからのLOADと同じ扱いになります。
+　Can be used as a substitute for the MONITOR LOAD command. Note that the LOAD command also works, but is treated the same as a LOAD from an application.
 
-例)
+Example)
 
 FD　TEST[CR]
 
-### FD/DOSファイル名[CR] 又は FD/　DOSファイル名[CR]
-　DOSファイル名で指定したバイナリファイルをLOADします。実行はしません。
+### FD/DOS filename[CR] or FD/　DOS filename[CR]
+　Loads the binary file specified by DOS filename without executing it.
 
-　「.MZT」は省略可能です。
+　".MZT" may be omitted.
 
-例)
+Example)
 
 FD/TEST[CR]
 
 FD/　TEST[CR]
 
 ### FDL[CR]
-　SD-CARDルートディレクトリにあるファイルの一覧を表示します。20件表示したところで指示待ちになるので打ち切るならSHIFT+BREAK又は↑を入力すると打ち切られ、Bキーで前の20件に戻ります。それ以外のキーで次の20件を表示します。
+　Displays a list of files in the SD card root directory. After displaying 20 entries it waits for input; press SHIFT+BREAK or ↑ to stop, B to go back to the previous 20 entries, or any other key to show the next 20 entries.
 
-　行頭に「*FD」を付加して表示してあるので実行したいファイルにカーソルキーを合わせて[CR]キーを押すだけでLOAD、実行が可能です。
+　Each entry is displayed with "*FD" prepended, so you can move the cursor to the desired file and press [CR] to LOAD and execute it.
 
-　表示される順番は、登録順となりファイル名アルファベッド順などのソートした順で表示することはできません。
+　Files are displayed in registration order; sorting alphabetically by filename is not possible.
 
 ### FDL　x[CR]
-ファイル名がxで始まるファイルの一覧を表示します。20件表示したところで指示待ちになるので打ち切るならSHIFT+BREAK又は↑を入力すると打ち切られ、Bキーで前の20件に戻ります。それ以外のキーで次の20件を表示します。
+Displays a list of files whose names begin with x. After displaying 20 entries it waits for input; press SHIFT+BREAK or ↑ to stop, B to go back to the previous 20 entries, or any other key to show the next 20 entries.
 
-xはMZのキーボードから入力可能な32文字までの文字列です。(数字、記号、アルファベット)
+x is a string of up to 32 characters that can be entered from the MZ keyboard (digits, symbols, alphabetical characters).
 
 
-例)
+Example)
 
 FDL S[CR]
 
@@ -319,123 +318,123 @@ FDL SP[CR]
 
 FDL BASIC S[CR]
 
-### FDA　DOSファイル名[CR]
-　DOSファイル名で指定したファイルを「0000.MZT」という名前でリネームコピーします。
+### FDA　DOS filename[CR]
+　Renames and copies the specified file to "0000.MZT."
 
-　FDLコマンドで表示されたファイル名をカーソルで選択し、行頭の「*FD」に「A」だけ付加して[CR]キーを押せば簡単です。
+　Select a file displayed by FDL using the cursor, then simply append "A" to the leading "*FD" and press [CR].
 
-### FDS　SAVE開始アドレス　SAVE終了アドレス　実行開始アドレス　DOSファイル名[CR]
-　SAVE開始アドレスからSAVE終了アドレスまでをDOSファイル名でSAVEします。
+### FDS　SAVE start address　SAVE end address　Execution start address　DOS filename[CR]
+　Saves from SAVE start address to SAVE end address under the specified DOS filename.
 
-　SAVE開始アドレス、SAVE終了アドレス、実行開始アドレスは16進数4桁で指定します。DOSファイル名の「.MZT」は省略可能です。
+　SAVE start address, SAVE end address, and execution start address are specified as 4-digit hexadecimal. ".MZT" in the DOS filename may be omitted.
 
-例)
+Example)
 
 FDS　1200　2FFF　1200　TEST[CR]
 
-### FDC　DOSファイル名[CR]
-　DOSファイル名で指定したファイルをコピーします。
+### FDC　DOS filename[CR]
+　Copies the specified file.
 
-　FDLコマンドで表示されたファイル名をカーソルで選択し、行頭の「*FD」に「C」だけ付加して[CR]キーを押せば簡単です。
+　Select a file displayed by FDL using the cursor, then simply append "C" to the leading "*FD" and press [CR].
 
-　DOSファイル名を入力し、[CR]キーを押すと「NEW NAME:」と聞いてくるので新しいDOSファイル名を入力して[CR]キーを押します。
+　Enter the DOS filename and press [CR]; it will prompt "NEW NAME:", so enter the new DOS filename and press [CR].
 
-　新しいDOSファイル名に既にあるDOSファイル名を指定するとコピーせずに中断します。
+　If the new DOS filename already exists, the copy is aborted.
 
-例)
+Example)
 
 FDC　TEST[CR]
 
 NEW NAME:TEST2[CR]
 
-### FDR　DOSファイル名[CR]
-　DOSファイル名で指定したファイルをリネームします。
+### FDR　DOS filename[CR]
+　Renames the specified file.
 
-　FDLコマンドで表示されたファイル名をカーソルで選択し、行頭の「*FD」に「R」だけ付加して[CR]キーを押せば簡単です。
+　Select a file displayed by FDL using the cursor, then simply append "R" to the leading "*FD" and press [CR].
 
-　DOSファイル名を入力し、[CR]キーを押すと「NEW NAME:」と聞いてくるので新しいDOSファイル名を入力して[CR]キーを押します。
+　Enter the DOS filename and press [CR]; it will prompt "NEW NAME:", so enter the new DOS filename and press [CR].
 
-　新しいDOSファイル名に既にあるDOSファイル名を指定するとリネームせずに中断します。
+　If the new DOS filename already exists, the rename is aborted.
 
-例)
+Example)
 
 FDR　TEST[CR]
 
 NEW NAME:TEST2[CR]
 
-### FDD　DOSファイル名[CR]
-　DOSファイル名で指定したファイルを削除します。
+### FDD　DOS filename[CR]
+　Deletes the specified file.
 
-　FDLコマンドで表示されたファイル名をカーソルで選択し、行頭の「*FD」に「D」だけ付加して[CR]キーを押せば簡単です。
+　Select a file displayed by FDL using the cursor, then simply append "D" to the leading "*FD" and press [CR].
 
-　DOSファイル名を入力し、[CR]キーを押すと「FILE DELETE?(Y:OK ELSE:CANSEL)」と聞いてくるのでYを押せば削除されます。Y以外のキーを押すとキャンセルとなります。
+　Enter the DOS filename and press [CR]; it will prompt "FILE DELETE?(Y:OK ELSE:CANSEL)". Press Y to delete, or any other key to cancel.
 
-### FDP　DOSファイル名[CR]
-　DOSファイル名で指定したファイルの内容をDUMPします。
+### FDP　DOS filename[CR]
+　Dumps the contents of the specified file.
 
-　FDLコマンドで表示されたファイル名をカーソルで選択し、行頭の「*FD」に「P」だけ付加して[CR]キーを押せば簡単です。
+　Select a file displayed by FDL using the cursor, then simply append "P" to the leading "*FD" and press [CR].
 
-　DOSファイル名を入力し、[CR]キーを押すとファイルの内容を128Byteを一画面として表示します。
+　Enter the DOS filename and press [CR]; the file contents are displayed 128 bytes per screen.
 
-　一画面表示したところで「NEXT:ANY BACK:B BREAK:SHIFT+BREAK」と表示して指示待ちとなるのでBで前の128Byteを表示、SHIFT+BREAKで中止、それ以外のキーで次の128Byteの表示となります。
+　After displaying one screen, "NEXT:ANY BACK:B BREAK:SHIFT+BREAK" is shown and it waits for input. Press B to show the previous 128 bytes, SHIFT+BREAK to stop, or any other key to show the next 128 bytes.
 
-　ファイルサイズが128Byteで割り切れない場合には最後のページは128Byteに揃うまで00Hで埋められます。
+　If the file size is not divisible by 128 bytes, the last page is padded with 00H to fill 128 bytes.
 
-　ファイル内容を書き換えることはできません。
+　File contents cannot be modified.
 
-### FDM　開始アドレス[CR]
-　開始アドレスからMZ-80Kのメモリ内容を128Byteを一画面として表示します。
+### FDM　Start address[CR]
+　Displays MZ-80K memory contents starting at the specified address, 128 bytes per screen.
 
-　一画面表示したところで「NEXT:ANY BACK:B BREAK:SHIFT+BREAK」と表示して指示待ちとなるのでBで前の128Byteを表示、SHIFT+BREAKで中止、それ以外のキーで次の128Byteの表示となります。
+　After displaying one screen, "NEXT:ANY BACK:B BREAK:SHIFT+BREAK" is shown and it waits for input. Press B to show the previous 128 bytes, SHIFT+BREAK to stop, or any other key to show the next 128 bytes.
 
-　一画面表示している途中でもSHIFT+BREAKでいつでも中止できます。
+　You can also press SHIFT+BREAK at any time during display to stop.
 
-### FDW　開始アドレス　1Byte(16進2桁)データ[CR]
-　開始アドレスから16進2桁データをMZ-80Kのメモリに書き込みます。
+### FDW　Start address　1-byte (2-digit hex) data[CR]
+　Writes 2-digit hex data to MZ-80K memory starting at the specified address.
 
-　開始アドレスに続けて16進2桁で書き込むデータを記述し[CR]キーを押します。データの区切りの空白は無視しますのであってもなくても構いません。
+　After the start address, enter the data bytes in 2-digit hex and press [CR]. Spaces between data are ignored, so they are optional.
 
-　16進2桁のByteデータは一行に収まる範囲なら何Byte分を続けても構いません。
+　You may enter as many bytes as fit on one line.
 
-　一行入力して[CR]キーを押すとデータが書き込まれ、次のアドレスが表示されるので続けてデータを入力していけます。
+　After pressing [CR] to write the data, the next address is displayed so you can continue entering data.
 
-　また、アドレスを修正すれば戻って修正や離れたアドレスにデータを書き込むことも可能です。
+　You can also correct the address to go back and modify data or write to a different address.
 
-　データの書き込みを止めるときは表示されたアドレスにデータを書かずに[CR]キーを押します。
+　To stop writing, press [CR] at the displayed address without entering data.
 
-　16進数以外を入力して[CR]キーを押した場合には16進数以外を入力した直前までの有効なデータを書き込み次のアドレスを表示します。
+　If non-hex characters are entered and [CR] is pressed, all valid data up to that point is written and the next address is displayed.
 
-例)
+Example)
 
 *FDW　1200　01　02　03　04　05　06　07　08[CR]
 
 *FDW　1200　0102030405060708[CR]
 
-*FDW　1200[CR]　(止めるとき)
+*FDW　1200[CR]　(to stop)
 
-*FDW　1200　12　34　5/[CR]　(12　34まで書き込まれます)
+*FDW　1200　12　34　5/[CR]　(12 and 34 are written)
 
 ### FDZ[CR]
-　【MZ-700専用】MZ-700用に作成した「FT.MZT」と同等の動きをします。 MONITOR 1Z-009A又は1Z-009Bを裏RAMにコピーしたうえでパッチを当てた後、裏RAM上のMONITORがスタートします。
+　[MZ-700 only] Performs the same function as "FT.MZT" created for the MZ-700. Copies MONITOR 1Z-009A or 1Z-009B to the back RAM, applies patches, and starts the MONITOR on the back RAM.
 
-　MZ-80Kで実行してしまった場合には、RESET動作となります。
+　If executed on an MZ-80K, it performs a RESET.
 
 ### FDU[CR]
-　【MZ-700専用、裏RAM MONITORで運用中にRESETした場合に限る】裏RAMに切り替え裏RAMのMONITORをスタートさせます。
+　[MZ-700 only, only when RESET after operating with back RAM MONITOR] Switches to back RAM and starts the MONITOR on the back RAM.
 
-　注）裏RAMにMONITORが無い状態で実行すると暴走します。
+　Note: Executing this without a MONITOR in back RAM will cause a crash.
 
-　MZ-80Kで実行してしまった場合には、RESET動作となります。
+　If executed on an MZ-80K, it performs a RESET.
 
 
-### アプリケーションからのLOAD
-　L、LOAD等アプリケーションが指定したコマンドの後ろにはIBFファイル名を指定可となっていますが、指定せずにL、LOAD等のコマンドのみで[CR]キーを押します。
+### LOAD from Applications
+　After the command specified by the application (L, LOAD, etc.), an IBF filename can optionally be specified, but press [CR] with just the command (L, LOAD, etc.) without specifying one.
 
-　CMTの場合にはここでPLAYボタンを押すよう指示が出るところですが、「DOS FILE:」と表示して行入力待ちになっていますのでDOSファイル名を入力して[CR]キーを押します。この時、「.MZT」の入力は省略できます。
+　Where a CMT would prompt you to press the PLAY button, "DOS FILE:" is displayed and the system waits for line input, so enter the DOS filename and press [CR]. ".MZT" may be omitted.
 
-　DOSファイル名は「.MZT」を除いて32文字まで、ただし半角カタカナ、及び一部の記号はArduinoが認識しないので使えません。パソコンでファイル名を付けるときはアルファベット、数字および空白でファイル名をつけてください。
+　DOS filenames may be up to 32 characters excluding ".MZT," however half-width katakana and some symbols are not recognized by the Arduino and cannot be used. When naming files on a PC, use alphabetical characters, numbers, and spaces.
 
-例)BASIC SP-5030では
+Example) In BASIC SP-5030:
 
 × LOAD "TEST"[CR]
 
@@ -447,89 +446,89 @@ NEW NAME:TEST2[CR]
 
 　DOS FILE:TEST.MZT[CR]
 
-** 参考 **
+** Reference **
 
-　S-OS SWORDでの運用に当たっては起動直後に「DV S:」としてデバイスを各SYSTEMデバイスとしてください。
+　When using S-OS SWORD, enter "DV S:" immediately after booting to set the device as the respective SYSTEM device.
 
-　FUZZY BASICだけかもしれませんが共通フォーマットデバイスのままだとLOADコマンドでIBFファイル名の省略ができませんでした。
+　With FUZZY BASIC at least (may not apply to others), it was not possible to omit the IBF filename in the LOAD command when using the common format device.
 
-#### LOAD時の特殊コマンド
-　「DOS FILE:」と表示して行入力待ちになったときに以下の特殊コマンドが使用可能です。
+#### Special Commands During LOAD
+　The following special commands are available when "DOS FILE:" is displayed waiting for input.
 
 ##### *FDL[CR]
 ##### *FDL x[CR]
-　MONITORコマンド入力待ちからのFDL、FDL xと全く同等のファイル一覧機能が使えます。
+　The same file listing function as FDL and FDL x from the MONITOR command prompt is available.
 
-　検索結果の行頭には「DOS FILE:」を付加して表示してあるのでLOADしたいファイルにカーソルキーを合わせて[CR]キーを押すだけでLOADが可能です。
+　Search results are displayed with "DOS FILE:" prepended, so move the cursor to the file you want to LOAD and press [CR] to load it.
 
-　「*FDL」で検索、カーソルで選んで読み込もうとした場合に「DOS FILE:」に戻ってしまうアプリケーションがありますが、再度カーソルを合わせて[CR]すれば読み込めます。
+　Some applications return to "DOS FILE:" when you search with "*FDL" and try to load by selecting with the cursor, but pressing [CR] again with the cursor on the file will load it.
 
 
-### アプリケーションからのSAVE
-　CMTの時と同様にアプリケーションの指定する入力方法、ルールでファイル名等を入力して保存してください。
+### SAVE from Applications
+　Enter the filename etc. using the input method and rules specified by the application, as you would with CMT.
 
-　ただし、半角カタカナはArduinoが認識できないため、使用できません。アルファベット、数字および空白で指定してください。
+　However, half-width katakana cannot be used as the Arduino does not recognize it. Use alphabetical characters, numbers, and spaces.
 
-　SAVE時は、入力したファイル名がIBFファイル名、DOSファイル名の両方に適用されます。
+　During SAVE, the entered filename is applied as both the IBF filename and DOS filename.
 
-　DOSファイル名としての「.MZT」は自動的に付加されます。
+　".MZT" is automatically appended as the DOS filename extension.
 
-例)BASIC SP-5030では
+Example) In BASIC SP-5030:
 
 ○ SAVE "TEST"[CR]
 
-## 操作上の注意
-　~~「SD-CARD INITIALIZE ERROR」と表示されたときは、SD-CARDをいったん抜き再挿入したうえでArduinoをリセットしてください。~~
+## Operating Notes
+　~~If "SD-CARD INITIALIZE ERROR" is displayed, remove the SD card and reinsert it, then reset the Arduino.~~
 
-　~~SD-CARDにアクセスしていない時に電源が入ったままで SD-CARDを抜いた後、再挿入しSD-CARDにアクセスすると「SD-CARD INITIALIZE ERROR」となる場合があります。再挿入した場合にはSD-CARDにアクセスする前にArduinoを必ずリセットしてください。~~
+　~~If the SD card is removed while power is on and not being accessed, then reinserted and accessed, "SD-CARD INITIALIZE ERROR" may occur. Always reset the Arduino before accessing the SD card after reinsertion.~~
 
-　~~SD-CARDの抜き差しは電源を切った状態で行うほうがより確実です。~~
+　~~It is safer to insert and remove the SD card with the power off.~~
 
-　(2024.3.10) SD-CARDにアクセスしていない時に電源が入ったままでSD-CARDを抜くと再度SD-CARDを挿入してもSD-CARDにアクセスできない問題を解消しました。(Arduinoを最新版に書き換えてください)
+　(2024.3.10) Fixed an issue where removing the SD card while power was on and it was not being accessed prevented the SD card from being accessed again after reinsertion. (Please rewrite the Arduino to the latest version.)
 
-　再度SD-CARDを挿入した後、FDL、LOAD、SAVE等でSD-CARDに3回ほどアクセスすれば復旧します。
-
-
-　SD-CARDへのセーブ時にDOSファイル名を指定せずに[CR]を押下してしまった場合、「.MZT」というDOSファイルが作成されてしまいます。この「.MZT」はアプリケーションからLOADする時にDOSファイル名を指定せずに[CR]を押下した場合に読み込まれることで不測の動作を起こす原因になりますので作成された場合には削除しておく方が無難です。
-
-　なお、「.MZT」は現在FDR及びFDDコマンドでは認識できませんので、Windowsパソコンから消去してください。
-
-## SD-CARDに読み書きできるかを試した結果
-
-　読み書き出来たもの(アルファベット順)
-
-　　BASE-80 Ver35【I/O 1981年4月号】
-
-　　BASIC SP-5030(パッチあて必要なバージョンあり)
-
-　　CAP-Xインタプリタ【I/O 1980年5月号】
-
-　　EDASM V1.2B【Oh!MZ 1985年1月号】
-
-　　FORM VER1.0(注3)【I/O 1980年6月号】
+　After reinserting the SD card, accessing it about 3 times via FDL, LOAD, SAVE etc. will restore functionality.
 
 
-　　FORTRAN-MZ V.1【I/O 1981年1月号】
+　If you press [CR] without specifying a DOS filename when saving to SD card, a DOS file named ".MZT" is created. This ".MZT" will be loaded if [CR] is pressed without specifying a DOS filename when LOADing from an application, potentially causing unexpected behavior, so it is advisable to delete it if created.
 
-　　GAME-MZ80K V.1(注1)【ASCII 1979年10月号】
+　Note that ".MZT" is currently not recognized by the FDR or FDD commands, so delete it from a Windows PC.
+
+## Results of Testing SD Card Read/Write
+
+　Successfully read and written (alphabetical order)
+
+　　BASE-80 Ver35 [I/O April 1981]
+
+　　BASIC SP-5030 (some versions require a patch)
+
+　　CAP-X Interpreter [I/O May 1980]
+
+　　EDASM V1.2B [Oh!MZ January 1985]
+
+　　FORM VER1.0 (Note 3) [I/O June 1980]
+
+
+　　FORTRAN-MZ V.1 [I/O January 1981]
+
+　　GAME-MZ80K V.1 (Note 1) [ASCII October 1979]
 
 　　HU-BASIC V1.3
 
-　　KM-BASIC ver 0.8.3-beta(注2)
+　　KM-BASIC ver 0.8.3-beta (Note 2)
 
-　　LSIアセンブラ(注1)【【ASCII 1979年11月号】
+　　LSI Assembler (Note 1) [ASCII November 1979]
 
-　　M-FORTH/MZ V1.1(注1)【I/O 1981年3月号】
+　　M-FORTH/MZ V1.1 (Note 1) [I/O March 1981]
 
-　　micro PASCAL-MZ VER 2.2【ASCII 1980年6月号】
+　　micro PASCAL-MZ VER 2.2 [ASCII June 1980]
 
-　　MONIOS【月刊マイコン 1982年2月号】
+　　MONIOS [Monthly Microcomputer February 1982]
 
-　　PALL【I/O 1979年12月号】
+　　PALL [I/O December 1979]
 
-　　S-OS SWORD(S-OS用アプリ含む)【Oh!MZ 1986年2月号】【再掲載 Oh!MZ 1987年3月号】
+　　S-OS SWORD (including S-OS applications) [Oh!MZ February 1986] [Reprinted Oh!MZ March 1987]
 
-　　SELF RELOCATABLE DEBUGGER【I/O 1980年11月号】
+　　SELF RELOCATABLE DEBUGGER [I/O November 1980]
 
 　　SP-2101 Z80 ASSEMBLER
 
@@ -539,62 +538,62 @@ NEW NAME:TEST2[CR]
 
 　　SP-2401 SYMB DEBUGGER
 
-　　TL/1(注1)(注3)【ASCII 1981年5月号】
+　　TL/1 (Note 1) (Note 3) [ASCII May 1981]
 
-　　TTL VERSION 1.1【Oh!MZ 1984年10月号】
+　　TTL VERSION 1.1 [Oh!MZ October 1984]
 
-　　WICS INTERPRETER VER 1.1(注3)【I/O 1981年10月号】
+　　WICS INTERPRETER VER 1.1 (Note 3) [I/O October 1981]
 
-　　8080用テキスト・エディタ＆アセンブラ【I/O 1980年9月号】
+　　8080 Text Editor & Assembler [I/O September 1980]
 
-　　マシン語モニタ【I/O 1979年10月号】【I/O合本 MZ-80活用研究】
+　　Machine Language Monitor [I/O October 1979] [I/O Compilation: MZ-80 Utilization Research]
 
-　　整数型ベーシックコンパイラー for MZ-80K/C, MZ-1200(注1)(注3)【諏訪工房】
-
-
-注1)このアプリケーションはMZ-700非対応です。MZ-700で動かすには、0h!MZ別冊 ADVANCED MZ-700に掲載されているSP-1002のMZ-700対応版 NZ-700が必要です。NZ-700にSP-1002と同じようにMZ-80K_SDのパッチをあてることでMZ-700でも同様にLOAD、SAVEが可能となります。
-
-注2)SAVEコマンドでファイルネームは指定できないようです。SAVE[CR]で「KMB-FILE VER 1.0」のファイルネームで保存されました。
-
-注3)LOADコマンドから「*FDL」で検索、カーソルで選んで読み込もうとした場合に「DOS FILE:」に戻ってしまいますが、再度カーソルを合わせて[CR]すれば読み込めます。
+　　Integer BASIC Compiler for MZ-80K/C, MZ-1200 (Note 1) (Note 3) [Suwa Kobo]
 
 
-　読み書き出来なかったもの
+Note 1) This application does not support the MZ-700. To run on the MZ-700, NZ-700, the MZ-700-compatible version of SP-1002 published in the 0h!MZ special edition ADVANCED MZ-700, is required. By applying the same MZ-80K_SD patches to NZ-700 as to SP-1002, LOAD and SAVE become available on the MZ-700 as well.
 
-　　EDAS FOR MZ-1200 VER 1.2【I/O 1982年11月号】
+Note 2) It appears that a filename cannot be specified with the SAVE command. Using SAVE[CR] saved the file with the filename "KMB-FILE VER 1.0."
 
-　　EXIT MONITOR【ASCII 1981年6月号】
+Note 3) When searching from the LOAD command with "*FDL," selecting with the cursor, and trying to load, it returns to "DOS FILE:", but pressing [CR] again with the cursor on the file will load it.
 
-## MZ700用プログラムで起動確認したもの
-　　S-BASIC 1Z-007B(LOAD、SAVEもSD対応となるパッチを公開しました)
 
-　　S-OS SWORD(MZ-700用SWORDでSD-CARD運用するにはMONITOR-ROMの書き換えが必要です。MONITOR-ROMを書き換えずに「FT.MZT」又はFDZコマンドを実行しても起動後のLOAD、SAVEはCMTとなります)
+　Could not read or write
 
-　　HUBASIC VERSION 2.0A(起動後のLOAD、SAVEはCMT)
+　　EDAS FOR MZ-1200 VER 1.2 [I/O November 1982]
+
+　　EXIT MONITOR [ASCII June 1981]
+
+## Programs Confirmed to Boot for MZ-700
+　　S-BASIC 1Z-007B (a patch to enable SD support for LOAD and SAVE has been released)
+
+　　S-OS SWORD (to use SD card with MZ-700 SWORD, the MONITOR ROM must be rewritten. Even executing "FT.MZT" or FDZ without rewriting the MONITOR ROM, LOAD and SAVE after booting will use CMT)
+
+　　HUBASIC VERSION 2.0A (LOAD and SAVE after booting use CMT)
 
 　　tiny XEVIOUS mz-700
 
-　　タイムシークレット(すべてのプログラムを別ファイルとして保存が必要)
+　　Time Secret (all programs must be saved as separate files)
 
-　　タイムトンネル(すべてのプログラムを別ファイルとして保存が必要)
+　　Time Tunnel (all programs must be saved as separate files)
 
-　　TS-700(「I/O別冊 WICS・BASEプログラム集」掲載、TS-700フォルダ参照)
+　　TS-700 (published in "I/O Special Edition: WICS/BASE Program Collection"; see TS-700 folder)
 
-　　SuperBASE-700(「I/O別冊 WICS・BASEプログラム集」掲載、TS-700フォルダ参照)
+　　SuperBASE-700 (published in "I/O Special Edition: WICS/BASE Program Collection"; see TS-700 folder)
 
-　　WICSインタプリタ、コンパイラ(「I/O別冊 WICS・BASEプログラム集」掲載、TS-700フォルダ参照)
+　　WICS Interpreter, Compiler (published in "I/O Special Edition: WICS/BASE Program Collection"; see TS-700 folder)
 
-なお、起動確認していないアプリケーションでも起動だけであればFDコマンドで起動できる可能性があります。
+Note that even applications not confirmed to boot may be launchable via the FD command.
 
-## 自作アプリケーションでMZ-80K_SDからLOADするDOSファイル名を指定したい場合
-　MZ-80K用自作アプリケーションでMZ-80K_SDからデータ・機械語プログラム等のバイナリデータをLOADする処理を追加したい場合にはF00Ah(MLHED)をコールしてDOSファイル名を入力した後、F00Dh(MLDAT)をコールしてデータをロードとなり、DOSファイル名をアプリケーションの中で指定しておくことが出来ません。
+## Specifying a DOS Filename to Load from MZ-80K_SD in a Custom Application
+　When adding a process to load binary data (data files, machine language programs, etc.) from MZ-80K_SD in a custom MZ-80K application, you call F00Ah (MLHED) to input the DOS filename and then call F00Dh (MLDAT) to load the data, so it is not possible to specify the DOS filename within the application itself.
 
-　そこで以下の機械語をアプリケーションに組み込み、コールすることでアプリケーション内でDOSファイル名を指定することが可能です。
+　By incorporating and calling the following machine language in your application, you can specify the DOS filename from within the application.
 
 
-　その後、F00DHをコールすればSDからLOADが実行されます。
+　After that, call F00DH to execute the LOAD from SD.
 
-|コード|
+|Code|
 | ------------ |
 |MLHED:　　LD　　　DE,FNAME|
 |　　　　　DI|
@@ -611,12 +610,12 @@ NEW NAME:TEST2[CR]
 |FNAME:|
 |　　　　　DB　　　'TEST',0DH|
 
-#### BASIC SP-5030のプログラム中でMZ-80K_SDからLOADするDOSファイル名を指定したい場合
-　BASIC SP-5030で使うときは以下の機械語を適当なアドレスに配置し、BASICから呼び出します。
+#### Specifying a DOS Filename to Load from MZ-80K_SD within a BASIC SP-5030 Program
+　When using with BASIC SP-5030, place the following machine language at a suitable address and call it from BASIC.
 
-　わずかな機械語ですのでBASICプログラム中にDATA文にしておき、LIMIT文で機械語領域を確保、READ文で読み込み、POKE文でメモリに書き込むようにすれば手軽です。
+　Since it is only a small amount of machine language, it is convenient to put it in DATA statements within the BASIC program, reserve a machine language area with the LIMIT statement, read it with READ statements, and write it to memory with POKE statements.
 
-|コード|
+|Code|
 | ------------ |
 |MLHED:　　DI|
 |　　　　　PUSH　　DE|
@@ -635,101 +634,101 @@ DATA 243,213,197,229,205,130,240,213,175,017,000,000,205,051,000,209
 DATA 195,091,248
 
 
-##### BASIC SP-5030からの呼び出し
+##### Calling from BASIC SP-5030
 
-|コード|備考|
+| Code | Notes |
 | ------------ | ------------ |
-|G＄="TEST"|DOSファイル名を表す文字列を文字列変数に代入|
-|USR(＄C000,G＄)|機械語を配置したアドレスとDOSファイル名を表す文字列を代入した文字列変数を値としてUSR関数を実行(SP-5030の場合文字列関数に代入された文字列の最後に0Dhが入ってます)|
-|USR(＄F00D)|SDからデータをLOAD|
+|G$="TEST"|Assign the DOS filename string to a string variable|
+|USR($C000,G$)|Execute the USR function with the address where the machine language is placed and the string variable containing the DOS filename (in SP-5030, the string assigned to a string variable has 0Dh at the end)|
+|USR($F00D)|LOAD data from SD|
 
-#### MZ-700でDOSファイル名を指定したい場合
-　MONITOR 1Z-009A(B)上で動くアプリケーションであればF000hからのROMにバンク切替(OUT (E3h),A)することを考慮すればMZ-80Kと同じように機械語をコールすることで指定できるようになるはずです。
+#### Specifying a DOS Filename for MZ-700
+　For applications running on MONITOR 1Z-009A(B), if bank switching to the ROM from F000h (OUT (E3h),A) is taken into account, it should be possible to specify the filename by calling machine language in the same way as for MZ-80K.
 
-　S-BASIC上でDOSファイル名を指定するにはバンク切替の他、文字列関数に代入された文字列の最後が00hで終わっていること、インフォメーションブロック(IFB)の位置もMONITOR 1Z-009A(B)とは違う等の差異を解決できる方以外はハードルが高いかもしれません。
+　Specifying a DOS filename from S-BASIC requires resolving, in addition to bank switching, differences such as the string assigned to a string variable ending with 00h and the position of the information block (IFB) differing from MONITOR 1Z-009A(B); it may be a high hurdle for those who cannot work through these differences.
 
-## MZ-700版ロポコのMZ-80K_SD対応パッチ
-　ロポコ for MZ-80KはMZ-80K_SDにも対応していますが、元祖MZ-700版ロポコはMZ-80K_SDに対応していません。
+## MZ-80K_SD Compatibility Patch for the MZ-700 Version of Ropoko
+　Ropoko for MZ-80K supports MZ-80K_SD, but the original MZ-700 version of Ropoko does not.
 
-　この度、作者のTookato様がロポコVersion 1.2.2をリリースされましたが、このアーカイブには無圧縮版のロポコが同梱されており、パッチを当てることでMZ-80K_SD対応とすることが出来ましたので公開します。
+　Author Tookato has released Ropoko Version 1.2.2, which includes an uncompressed version of Ropoko. A patch has been created to make it MZ-80K_SD compatible, and is now being released.
 
-#### 2024.7.31 MZ-1500_SDと共用にしました。MZ-700+MZ-80K_SDでの使用だけでしたらダウンロードし直す必要はありません。
+#### 2024.7.31: Made compatible with MZ-1500_SD as well. If you are only using MZ-700+MZ-80K_SD, you do not need to re-download.
 
-### 使い方
-　ロポコVersion 1.2.2を入手します。
+### How to Use
+　Obtain Ropoko Version 1.2.2.
 
-　解凍すると「Uncompressed」フォルダにROPOKO-PR.MZT、ROPOKO-AR.MZT、ROPOKO-BR.MZT、の三つのファイルがあるのでSDカードにコピーします。
+　After extracting, you will find ROPOKO-PR.MZT, ROPOKO-AR.MZT, and ROPOKO-BR.MZT in the "Uncompressed" folder; copy these to the SD card.
 
-　このGitHubのMZ80K_SDリポジトリ中の「ROPOKO」フォルダ内の「ROPOKO-SD.MZT」をSDカードにコピーします。
+　Copy "ROPOKO-SD.MZT" from the "ROPOKO" folder in this GitHub MZ80K_SD repository to the SD card.
 
-　FDL又はFDコマンドを使ってSDカードにコピーした「ROPOKO-SD.MZT」を実行します。
+　Use the FDL or FD command to execute "ROPOKO-SD.MZT" copied to the SD card.
 
-　ROPOKO-PR.MZTを自動的に読込み、SD対応のパッチを当て、ロポコが起動します。
+　ROPOKO-PR.MZT is automatically read in, the SD-compatible patch is applied, and Ropoko starts.
 
-#### 2024.8.2 MZ-700+MZ-80K_SDでロポコがSDから起動できたらS2スイッチをSDからCMTに切り替えてゲームを開始してください。SDのままゲームを続けると文字化けが発生するときがあるとTookato様からご報告いただきました。
+#### 2024.8.2: Tookato has reported that when Ropoko successfully boots from SD on MZ-700+MZ-80K_SD, you should switch the S2 switch from SD to CMT before starting the game. Continuing with SD may cause garbled characters.
 
-　シナリオの読込は、例えばシナリオAを選択し、「テープをセットしてください」と表示された後にCRを一回押すと「DOS FILE:」と表示されるので「ROPOKO-AR」と正しく入力し、CRを押すことで読み込みが始まります。
+　To load a scenario, for example select Scenario A, and after "Please set the tape" is displayed, press CR once; "DOS FILE:" is displayed, so enter "ROPOKO-AR" correctly and press CR to begin loading.
 
-　データのセーブ・ロードはF3キーを押し、S:Save L:Loadを選択するとファイル名の入力になります。A面では「SA-」B面では「SB-」で始まるファイル名とし「SA-1/2/3...」のように異なる名前を付けるところはオリジナルと同様です。
+　For data save/load, press F3, select S:Save or L:Load, and you will be prompted for a filename. Use filenames starting with "SA-" for the A side and "SB-" for the B side, giving different names such as "SA-1/2/3...", the same as the original.
 
-　ただし、セーブ時に既にあるファイル名を指定すると上書きしますのでお気を付けください。
+　However, if you specify an existing filename during SAVE, it will be overwritten, so please be careful.
 
-### ROM切り離しスイッチ改造
-　MZ-80K_SDはMZ-700での使用をMZ-80K互換機としても使える程度にしか考えていなかったため、Tookato様からご報告いただいたようにMZ-700版ロポコをMZ-80K_SD対応パッチで遊んだ場合にRAMとの衝突で文字化けが発生します。
+### ROM Disconnect Switch Modification
+　MZ-80K_SD was only designed for MZ-700 use to the extent of operating as an MZ-80K compatible machine, so as reported by Tookato, playing the MZ-700 version of Ropoko with the MZ-80K_SD compatibility patch causes garbled characters due to conflicts with RAM.
 
-　ロポコがSDから起動できたらS2スイッチをSDからCMTに切り替えてゲームを開始すれば回避できるようですが、ゲーム開始後はいっそROMを切り離した方が安心です。
+　This can be avoided by switching the S2 switch from SD to CMT after Ropoko boots from SD before starting the game, but once the game has started it is even safer to disconnect the ROM entirely.
 
-　そこで以下のようにパターンカットとスライドスイッチの増設をすればROM切り離しが出来ます。
+　The following pattern cut and slide switch addition allows ROM disconnection.
 
-#### Rev1.5.5では標準装備としました。
+#### Incorporated as standard in Rev1.5.5.
 
 ![rom_discon1](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/rom_discon1.jpg)
 
-　U5 LS30 6Pinのすぐ左横を通るパターンをカットします。もうひとつ左を通るパターンに傷をつけないよう注意します。6Pin側にはパターンは無いので6Pinの左横をカットするくらいの気持ちで大丈夫です。
+　Cut the trace running just to the left of pin 6 of U5 LS30. Take care not to damage the trace running one further to the left. There is no trace on the pin 6 side, so cutting just to the left of pin 6 is sufficient.
 
 ![rom_discon2](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/rom_discon2.jpg)
 
-　10kの抵抗でROMの20Pinと28Pinを接続し、20Pinをプルアップします。
+　Connect ROM pin 20 and pin 28 with a 10k resistor to pull up pin 20.
 
-　ROMの20PinとU5 LS30の8Pinをスライドスイッチを接続します。
+　Connect ROM pin 20 and U5 LS30 pin 8 to a slide switch.
 
-　スイッチONでROMが接続状態、OFFで切り離しとなります。
+　With the switch ON the ROM is connected; with it OFF the ROM is disconnected.
 
-　スライドスイッチをまずROM接続側にしてロポコを起動します。ロポコが起動できたらスライドスイッチをROM切り離し側にしてゲームを開始してください。
+　First set the slide switch to the ROM-connected side and start Ropoko. Once Ropoko has started, set the slide switch to the ROM-disconnected side before starting the game.
 
 ![rom_discon3](https://github.com/yanataka60/MZ80K_SD/blob/main/JPEG/rom_discon3.jpg)
 
-　部品面から見るとこんな感じです。
+　This is how it looks from the component side.
 
-## ロポコ(体験版)のMZ-80K_SD対応パッチ
-　MZ-700版ロポコと同様にロポコ(体験版)もパッチを作成しました。
+## MZ-80K_SD Compatibility Patch for Ropoko (Trial Version)
+　A patch has also been created for the Ropoko trial version, similar to the MZ-700 version.
 
-### 使い方
-　ロポコ(体験版)を入手します。
+### How to Use
+　Obtain the Ropoko trial version.
 
-　解凍すると「Uncompressed」フォルダにROPOKO-TR.mztがあるのでSDカードにコピーします。
+　After extracting, you will find ROPOKO-TR.mzt in the "Uncompressed" folder; copy it to the SD card.
 
-　このGitHubのMZ80K_SDリポジトリ中の「ROPOKO-TRIAL」フォルダ内の「ROPOKO-T-SD.MZT」をSDカードにコピーします。
+　Copy "ROPOKO-T-SD.MZT" from the "ROPOKO-TRIAL" folder in this GitHub MZ80K_SD repository to the SD card.
 
-　FDL又はFDコマンドを使ってSDカードにコピーした「ROPOKO-T-SD.MZT」を実行します。
+　Use the FDL or FD command to execute "ROPOKO-T-SD.MZT" copied to the SD card.
 
-　ROPOKO-TR.mztを自動的に読込み、SD対応のパッチを当て、ロポコ(体験版)が起動します。
+　ROPOKO-TR.mzt is automatically read in, the SD-compatible patch is applied, and the Ropoko trial version starts.
 
-　データのセーブ・ロードはF3キーを押し、S:Save L:Loadを選択するとファイル名の入力になります。A面では「SA-」B面では「SB-」で始まるファイル名とし「SA-1/2/3...」のように異なる名前を付けるところはオリジナルと同様です。
+　For data save/load, press F3, select S:Save or L:Load, and you will be prompted for a filename. Use filenames starting with "SA-" for the A side and "SB-" for the B side, giving different names such as "SA-1/2/3...", the same as the original.
 
-　ただし、セーブ時に既にあるファイル名を指定すると上書きしますのでお気を付けください。
+　However, if you specify an existing filename during SAVE, it will be overwritten, so please be careful.
 
-## 専用トレイ
-　カセット部に被せて使うMZ-80K_SD用トレイを公開しました。
+## Dedicated Tray
+　A dedicated tray for MZ-80K_SD to place over the cassette section has been released.
 
 https://yanataka.booth.pm/items/6058283
 
-　MZ-1200用はこちらです。
+　For MZ-1200, see here:
 
 https://yanataka.booth.pm/items/6069703
 
-## 謝辞
-　基板の作成に当たり以下のデータを使わせていただきました。ありがとうございました。
+## Acknowledgements
+　The following data was used in creating the board. Thank you very much.
 
 　Arduino Pro Mini
 
@@ -740,242 +739,242 @@ https://yanataka.booth.pm/items/6069703
 　　https://github.com/kuninet/PC-8001-SD-8kRAM
 
 
-　MZ-700への対応に当たっては、紅茶羊羹様の「MZ⇔PC間でデータを転送する（USB版）」が非常に参考になりました。ありがとうございました。
+　In adding MZ-700 support, Kōcha Yōkan's "Transferring Data Between MZ and PC (USB Version)" was very helpful. Thank you very much.
 
 
-　不安定動作の解消に以下の皆様にご協力とご助言をいただきました。ありがとうございました。(アルファベット順)
+　The following people provided cooperation and advice in resolving unstable operation. Thank you very much. (Alphabetical order)
 
-　　EIJ様
+　　EIJ
 
-　　hlide fremen様
+　　hlide fremen
 
-　　junk_suga様
+　　junk_suga
 
-　　retrogamer128様
+　　retrogamer128
 
-　Arduino等に使われる5V電源に対応したMicroSD Card Adapterを使って作られた事例をご報告いただきました。ありがとうございました。
+　A report was received of a build using a MicroSD Card Adapter compatible with the 5V power used with Arduino etc. Thank you very much.
 
-　　𝕊𝕖ñ𝕠𝕣 𝔼𝕤𝕥𝕖𝕓𝕒𝕟様
+　　𝕊𝕖ñ𝕠𝕣 𝔼𝕤𝕥𝕖𝕓𝕒𝕟
 
-## 追記
+## Updates
 2021.12.12
 
-　MZ-700をMZ-80Kの代わりとして使うだけならNZ-700を最初に起動すればパッチを当てたROMを焼かなくてもいいんだと気づきました。FDコマンドでNZ-700が起動するようにすればMZ-700のほうがハードルが低いかもしれません。
+　Realized that if you only want to use the MZ-700 as a substitute for the MZ-80K, starting NZ-700 first means you don't need to burn a patched ROM. Setting up the FD command to start NZ-700 may actually make the MZ-700 a lower-hurdle option.
 
 2021.12.12
 
-　MZ-700用に「FT.MZT」を作成しました。
+　Created "FT.MZT" for the MZ-700.
 
 2021.12.13
 
-　KiCad\MZ80k_SDフォルダの回路図MZ80K_SD.pdfをRev1.1に更新
+　Updated schematic MZ80K_SD.pdf in KiCad\MZ80k_SD folder to Rev1.1.
 
 2021.12.13
 
-　MZ-80KのS-OS SWORDでアプリケーションをLOADしようとしたとき、最初の一回だけはなぜかインフォメーションブロックの読み込みで止まってしまい、継続するためにはキーを一回押す必要がある原因は、FLGETのDEBUGにMZ-700用の修正もしてしまっていたせいでした。元に戻したところ無事解消。
+　Identified the cause of an issue where, when trying to LOAD an application from S-OS SWORD on the MZ-80K, only the very first attempt would stall at reading the information block and required pressing a key to continue: FLGET's DEBUG had accidentally included MZ-700-specific corrections. Reverting this resolved the issue.
 
 2021.12.14
 
-　S-BASICについてSD-CARD対応とするパッチを公開しました。
+　Released a patch to enable SD card support for S-BASIC.
 
 2021.12.18 2021.12.19 2021.12.21
 
-　(MZ-80Kの電源状況によっては内部電源では動作不安定になることもあるようです。不安定な挙動がある場合には外部電源を試してください。)
+　(Depending on the MZ-80K's power conditions, internal power may cause instability. If unstable behavior occurs, try external power.)
 
-　昨日追記した挙動不安定は電源のせいではなく、28C64がハズレあるいは個体差によりブラウン管の磁気の影響を受けていたためでした。
+　The instability noted yesterday was not due to power but because the 28C64 was a defective unit or had individual variation causing it to be affected by the CRT's magnetic field.
 
-　28C64に個体差があるとは思われますが、それを吸収すべきプログラムにバグがあったので修正。
+　Although individual variation in 28C64 is suspected, there was a bug in the program that should have absorbed this, which has been fixed.
 
 2021.12.20
 
-　27C64に対応するためROMの1PinをVCCに接続し、基板をRev1.2としました。
+　To support 27C64, connected pin 1 of the ROM to VCC and updated the board to Rev1.2.
 
 2021.12.24
 
-　安定性向上のためプルアップ抵抗を追加することにしました。回路図、基板データの検証が終わり次第公開を予定しています。また、エラー処理にバグがありましたのでこちらもテストが終わり次第公開したいと思います。
+　Decided to add pull-up resistors to improve stability. Planning to release once verification of the schematic and board data is complete. Also found a bug in the error handling, which will also be released after testing.
 
 2021.12.26
 
-　エラー処理のバグを修正。回路修正は後日。
+　Fixed the error handling bug. Circuit fix to follow at a later date.
 
 2021.12.29
 
-　MZ-700 MONITOR 1Z-009Aを入手し動作に支障がないことを確認しました。
+　Obtained MZ-700 MONITOR 1Z-009A and confirmed there are no operational issues.
 
 2022.1.19
 
-　GALが不安定動作の原因と思われるため、TTLで置き換えました。テスト環境では今のところ非常に安定しています。
+　GAL was identified as the likely cause of instability and has been replaced with TTL. In the test environment it has been very stable so far.
 
-　今まで不安定動作の要因と思われていた内部電源、外部電源、28C64の個体差、ブラウン管の磁気の影響、プルアップ抵抗等についてもTTLに置き換えたことで解消されています。
+　Issues previously attributed to instability — internal vs. external power, individual differences in 28C64, CRT magnetic effects, pull-up resistors, etc. — have all been resolved by switching to TTL.
 
 2022.1.23
 
-　04D8H MONITOR リード インフォメーション代替処理のバグを修正。HU-BASIC V1.3、8080用テキスト・エディタ＆アセンブラのLOAD時に起こっていたエラーに対処。
+　Fixed a bug in the alternative processing for 04D8H MONITOR Read Information. Resolved errors that occurred during LOAD of HU-BASIC V1.3 and the 8080 Text Editor & Assembler.
 
 2022.1.24
 
-　SAVE時ファイルネームの後ろの空白に対処する処理をArduino側からMZ-80K側に変更。
+　Moved trailing-space handling for SAVE filenames from the Arduino side to the MZ-80K side.
 
-　Arduinoの比較演算子の記述を見直し。
+　Reviewed comparison operator descriptions in Arduino code.
 
 2022. 1.25
 
-　0475H MONITOR ライト データ代替処理、04F8H MONITOR リード データ代替処理での8255初期化を廃止
+　Removed 8255 initialization from 0475H MONITOR Write Data alternative processing and 04F8H MONITOR Read Data alternative processing.
 
-　Arduino側での各コマンド受信時のdelay()を廃止
+　Removed delay() on each command receive on the Arduino side.
 
 2022.1.26
 
-　FDコマンドでロード可能なファイル種類コードは0x01のみとしていた制限を撤廃した
+　Removed the restriction that only file type code 0x01 was loadable via the FD command.
 
 2022.1.28
 
-　MZ-700用「FT.MZT」の動作をするFDZ、FDUコマンドを新設した。
+　Added new FDZ and FDU commands that perform the same function as "FT.MZT" for MZ-700.
 
 2022.1.29
 
-　特定環境下でLOAD、SAVEを行うとアプリケーションが固まってしまう原因のCMT代替処理RETURN時の割込み許可(EI)を削除。
+　Removed interrupt enable (EI) on return from CMT substitute processing that was causing applications to freeze during LOAD/SAVE in certain environments.
 
-　FDPコマンドで前ページに戻ると表示が乱れる場合がある症状を修正。
+　Fixed an issue where display became corrupted when going back to the previous page with the FDP command.
 
 2022.1.30
 
-　FDLコマンド仕様変更 FDL A～Zの場合、ファイル名先頭一文字を比較して一致したものだけを出力
+　FDL command spec change: when using FDL A–Z, only entries whose first character matches are output.
 
 2022.1.31
 
-　FDLコマンド仕様変更 FDL nでのページ指定を廃止。FDL xでキーボードから入力可能なすべての文字で先頭一致とした。代わりにBキーで前の20件に戻れる機能を追加した。
+　FDL command spec change: removed page specification by FDL n. FDL x now performs prefix matching on all characters enterable from the keyboard. Added ability to go back to the previous 20 entries with the B key.
 
-　FDコマンド実行後アプリ動作が固まってしまう機械、アプリへの対処
+　Fixed an issue where machine/app operation would freeze after executing the FD command.
 
 2022.2.2
 
-　DOSファイル名がアルファベット小文字でもFDL xで検索できるよう修正
+　Fixed FDL x search to work even when DOS filenames contain lowercase alphabetical characters.
 
 2022.2.4
 
-　ArduinoにMZ-1200対策
+　Added MZ-1200 countermeasure to Arduino.
 
 2022.2.9
 
-　FDLコマンド仕様変更 FLD xの比較文字列を32文字以内とした。
+　FDL command spec change: comparison string for FDL x limited to 32 characters or fewer.
 
 2022.2.10
 
-　ROMの相性について付記しました。
+　Added notes on ROM compatibility.
 
-　アプリケーションのLOADコマンドの中でFDLコマンドが使える機能を実装しました。
+　Implemented the ability to use the FDL command from within an application's LOAD command.
 
 2022.2.11
 
-　アプリケーションのLOADコマンドの中でFDLコマンドが使える機能がMZ-700 MONITOR 1Z-009A、1Z-009B環境下では使えないバグを修正しました。
+　Fixed a bug where the ability to use the FDL command from within an application's LOAD command did not work under MZ-700 MONITOR 1Z-009A or 1Z-009B.
 
 2022.2.15
 
-　外部電源での起動に躓く場合の対処法を記載。
+　Added instructions for dealing with startup failures on external power.
 
 2022.2.26
 
-　基板をRev1.5.2に更新。外部電源での稼働時において起動が躓く現象に対処。Rev1.5.1をRev1.5.2相当への改造方法を掲載。
+　Updated board to Rev1.5.2. Addressed issue of startup failures when running on external power. Published modification method to bring Rev1.5.1 up to Rev1.5.2 equivalence.
 
 2022.3.27
 
-　基板のシルク印刷の向きを修正。
+　Fixed orientation of silkscreen on board.
 
-　アプリケーションからDOSファイル名を指定せずにSAVEしたときの挙動について追記。
+　Added notes on behavior when saving from an application without specifying a DOS filename.
 
 2022.3.28
 
-　誤字修正　誤「FDC及びFDDコマンド」 -> 正「FDR及びFDDコマンド」
+　Typo correction: "FDC and FDD commands" → "FDR and FDD commands."
 
 2022.4.8
 
-　Rev1.5.2基板でも機体によっては、電源ON時に起動に躓くことがあるようです。本体をリセットすることで解消できますが、気になる方はArduinoプログラム74行目の「delay(1000)」を「delay(1500)」ぐらいにしてみてください。
+　Even with the Rev1.5.2 board, some units may occasionally fail to start on power-on. Resetting the system will resolve this, but if it bothers you, try changing "delay(1000)" on line 74 of the Arduino program to something like "delay(1500)."
 
 2022.4.24
 
-　KiCad Libraryの定数を修正。
+　Fixed constants in KiCad Library.
 
 2022.5.31
 
-　誤解を招く表現を修正
+　Fixed a misleading expression.
 
-　修正前)DOSファイル名を指定せずに[CR]を押下してしまった場合、
+　Before: "If you press [CR] without specifying a DOS filename,"
 
-　修正後)SD-CARDへのセーブ時にDOSファイル名を指定せずに[CR]を押下してしまった場合、
+　After: "If you press [CR] without specifying a DOS filename when saving to SD card,"
 
 2022.6.29
 
-　アプリケーションからのロード、セーブをSD対応とさせるパッチあてWindows用ツール「CMT2SD_CHECK」を公開しました。
+　Released the Windows tool "CMT2SD_CHECK" for patching applications to enable SD load/save.
 
-　回路図にネットラベルを追加しました。
+　Added net labels to the schematic.
 
 2022.6.30
 
-　Z80フォルダの「FD_rom.BIN」を今回の「FD_rom.BIN」へ置き換えました。
+　Replaced "FD_rom.BIN" in the Z80 folder with the new version.
 
-　「CMT2SD_CHECK」によりパッチを当てたアプリケーションを使うときには新しい「FD_rom.BIN」への交換が必要です。
+　When using applications patched with "CMT2SD_CHECK," replacement with the new "FD_rom.BIN" is required.
 
 2022.8.4
 
-　Arduinoを基板に直付けしている場合、Arduinoプログラムを書き込むときの注意点を書き加えました。
+　Added a note about precautions when writing the Arduino program if the Arduino is soldered directly to the board.
 
 2022.9.11
 
-　MicroSD Card Adapter用の端子を付加し、基板をRev1.5.3に更新。
+　Added a terminal for MicroSD Card Adapter and updated board to Rev1.5.3.
 
 2023.6.19
 
-　MZ-2000_SDの起動方式追加によりArduinoプログラムを修正。MZ-80K_SDには影響なし。
+　Modified the Arduino program due to an additional boot method for MZ-2000_SD. No impact on MZ-80K_SD.
 
 2023.9.20
 
-　「I/O別冊 WICS・BASEプログラム集」に掲載されているTS-700、SuperBASE-700、WICSインタプリタ、コンパイラへの対応を追加した。
+　Added support for TS-700, SuperBASE-700, WICS Interpreter, and Compiler published in "I/O Special Edition: WICS/BASE Program Collection."
 
 2023.9.23
 
-　Tookatoさんから報告のあった「D28C64ACZ」を動かない個体の例が報告されているROMのリストに追加しました。
+　Added "D28C64ACZ," reported by Tookato, to the list of ROMs with reported non-working units.
 
 2024.1.15
 
-　SDカードは8GB以下が望ましいことを追記。
+　Added a note that SD cards of 8GB or less are preferable.
 
 2024.3.4
 
-　「自作アプリケーションでMZ-80K_SDからLOADするDOSファイル名を指定したい場合」を追記。
+　Added the section "Specifying a DOS Filename to Load from MZ-80K_SD in a Custom Application."
 
 2024.3.10
 
-　電源が入ったままでSD-CARDを抜くと再度SD-CARDを挿入してもSD-CARDにアクセスできない問題を解消した。
+　Fixed an issue where removing the SD card while power was on prevented the SD card from being accessed again after reinsertion.
 
 2024.7.29
 
-　Tookato様作MZ-700用ロポコVersion 1.2.2をMZ-80K_SD対応とするパッチを公開しました。
+　Released a patch to make Tookato's MZ-700 Ropoko Version 1.2.2 compatible with MZ-80K_SD.
 
 2024.7.31
 
-　MZ-700用ロポコVersion 1.2.2をMZ-80K_SD対応とするパッチをMZ-1500_SD共用にしました。
+　Made the MZ-700 Ropoko Version 1.2.2 compatibility patch shared with MZ-1500_SD.
 
 2024.8.2
 
-　Tookato様からご指摘により、MZ-700+MZ-80K_SDでロポコを遊ぶとき、SDから起動後にS2スイッチをSDからCMTに切り替える必要があることを追記しました。
+　At Tookato's suggestion, added a note that when playing Ropoko on MZ-700+MZ-80K_SD, the S2 switch must be switched from SD to CMT after booting from SD.
 
 2024.8.8
 
-　ROM切り離しスイッチの増設方法を追加しました。
+　Added instructions for installing the ROM disconnect switch.
 
 2024.9.1
 
-　専用トレイを公開しました。
+　Released the dedicated tray.
 
 2024.10.10
 
-　ROM切り離しスイッチを標準装備としたRev1.5.5基板及び自動切り替えとしたMZ-700_SDの記述を加えました。
+　Added descriptions of the Rev1.5.5 board with the ROM disconnect switch as standard, and MZ-700_SD with automatic switching.
 
 2025.7.31
 
-　MZ-80シリーズでの動作について追記。
+　Added notes on operation with the MZ-80 series.
 
 2025.12.4
 
-　kuran_kuranさんにArduinoプログラムのバグを発見していただきました。精査した結果、不要な処理が含まれていることが原因であったため不要な処理部分を削除しました。なお、未修正のままでも実害はありません。kuran_kuranさん、ありがとうございました。
+　kuran_kuran discovered a bug in the Arduino program. Upon investigation, it was found to be caused by unnecessary processing being included, which has been removed. There is no actual harm if left unpatched. Thank you, kuran_kuran.
