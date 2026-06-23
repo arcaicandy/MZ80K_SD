@@ -1,55 +1,55 @@
-# MZ-700 S-BASIC 1Z-007BをMZ-80K_SD対応にするパッチ
+# Patch to Make MZ-700 S-BASIC 1Z-007B Compatible with MZ-80K_SD
 
-　S-BASIC 1Z-007BはMONITOR 1Z-009A、1Z-009Bをコールしていないため、MZ-80K_SD対応にするためにパッチを当てる必要があります。
+　S-BASIC 1Z-007B does not call MONITOR 1Z-009A or 1Z-009B, so a patch must be applied to make it compatible with MZ-80K_SD.
 
-　S-BASICの仕様を把握してはいないのですが、試行錯誤の末、一応正常にMZ-80K_SDが動いていると思われますので公開します。
+　I don't have a full understanding of the S-BASIC specifications, but after a lot of trial and error, it appears to be working correctly with MZ-80K_SD, so I am releasing it.
 
-　たまたま動いているだけかもしれませんのでバックアップをとってからの実行をお願いします。
+　It may only be working by chance, so please make a backup before use.
 
-#### 2023.2.24 本来80K用の回路ですのでMZ-700でRAMバンクが前に出た時にROMの出力と衝突します。このパッチをS-BASICに使用する場合はMZ-700本体にストレスがかかることを承知の上使用してください。
+#### 2023.2.24: Since this circuit is originally designed for the 80K, when the MZ-700's RAM bank comes forward it will conflict with the ROM output. If using this patch with S-BASIC, please be aware that it places stress on the MZ-700 hardware.
 
-#### 2024.6.29 従来プロッタのCIRCLE命令をつぶしてSDアクセスルーチンを置いていましたが、未使用となっているキーワードテーブルの隙間に移動しました。これによりプロッタ関連命令もすべて使えるようになりました。
+#### 2024.6.29: Previously the SD access routine was placed by overwriting the CIRCLE instruction of the plotter, but it has been moved to unused gaps in the keyword table. As a result, all plotter-related instructions are now usable.
 
-## パッチプログラムについて
+## About the Patch Program
 
-　SBASIC_patch1.bin、SBASIC_patch2.binの二つをS-BASICのMZTファイルに当てます。
+　Two files, SBASIC_patch1.bin and SBASIC_patch2.bin, are applied to the S-BASIC MZT file.
 
-　MZTファイルの00A1Hから00AFHまで(実アドレス0021H～002FH)をSBASIC_patch1.binと差し替えます。
+　Replace bytes 00A1H through 00AFH of the MZT file (actual addresses 0021H–002FH) with SBASIC_patch1.bin.
 
-　MZTファイルの2E80Hから2FE3Hまで(実アドレス2E00H～2F63H)をSBASIC_patch2.binと差し替えます。
+　Replace bytes 2E80H through 2FE3H of the MZT file (actual addresses 2E00H–2F63H) with SBASIC_patch2.bin.
 
-　~~MZTファイルの5184Hから52E7Hまで(実アドレス5104H～5267H)をSBASIC_patch2.binと差し替えます。~~
+　~~Replace bytes 5184H through 52E7H of the MZT file (actual addresses 5104H–5267H) with SBASIC_patch2.bin.~~
 
-　パッチを当てたファイルを「S-BASIC SD.MZT」等パッチを当てたことが識別できるファイル名で保存してお使いください。
+　Save the patched file under a filename that identifies it as patched, such as "S-BASIC SD.MZT."
 
-　~~プロッタのCIRCLE命令をつぶしています。プロッタの他の命令に影響があるか検証していませんが、プロッタ関連の命令は使えないとしてください。~~
+　~~The CIRCLE instruction of the plotter has been overwritten. Whether this affects other plotter instructions has not been verified, but please assume that plotter-related instructions cannot be used.~~
 
-## ファイル名について
+## About Filenames
 
-　オリジナル通りに16文字までがファイル名となりますが、半角カナ文字はArduinoが認識できない、一部の記号はMZ-700のキーボードから入力できないので使えません。
+　As per the original, filenames are up to 16 characters, but half-width katakana cannot be used as the Arduino does not recognise it, and some symbols cannot be entered from the MZ-700 keyboard.
 
-　ロングファイルネームに対応できなかった引き換えにLOADコマンドもオリジナル通りの入力方法となり、そのままDOSファイル名となります。
+　In exchange for not supporting long filenames, the LOAD command uses the same input method as the original, and the entered name becomes the DOS filename directly.
 
-例)
+Example)
 
-　SAVE "TEST.BAS" : TEST.BAS.MZTというDOSファイル名で保存されます。
+　SAVE "TEST.BAS" : Saved with DOS filename TEST.BAS.MZT
 
-　SAVE "TEST"     : TEST.MZTというDOSファイル名で保存されます。
+　SAVE "TEST"     : Saved with DOS filename TEST.MZT
 
-　LOAD "TEST.BAS" : TEST.BAS.MZTというDOSファイル名のファイルがロードされます。
+　LOAD "TEST.BAS" : Loads the file with DOS filename TEST.BAS.MZT
 
-　LOAD "TEST"     : TEST.MZTというDOSファイル名のファイルがロードされます。
+　LOAD "TEST"     : Loads the file with DOS filename TEST.MZT
 
-　DOSファイル名が「TEST SBASIC EIGHT.MZT」の場合、LOAD "TEST SBASIC EIGHT"と入力しても「TEST SBASIC EIGH.MZT」というDOSファイルを探しに行くためロードできません。
+　If the DOS filename is "TEST SBASIC EIGHT.MZT", entering LOAD "TEST SBASIC EIGHT" will not work because it will look for a DOS file named "TEST SBASIC EIGH.MZT" (truncated to 16 characters).
 
-## 使用方法
-　パッチを当てたS-BASIC.MZTをFDコマンドでロードします。MONITOR 1Z-009A、1Z-009Bにパッチを当てる必要はありませんので、FT.MZTの実行も不要です。
+## How to Use
+　Load the patched S-BASIC.MZT using the FD command. There is no need to patch MONITOR 1Z-009A or 1Z-009B, so running FT.MZT is also unnecessary.
 
-## 追記
+## Updates
 2021.12.26
 
-　エラー処理のバグを修正。
+　Fixed a bug in error handling.
 
 2024.6.29
 
-　SDアクセスルーチンをキーワードテーブル隙間の未使用領域に移動。
+　Moved the SD access routine to unused space in the keyword table gaps.
