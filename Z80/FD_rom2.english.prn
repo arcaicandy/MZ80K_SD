@@ -1,0 +1,53 @@
+warning[backslash]: File name contains \, use / instead (\ fails on most of the supported platforms): E:\TNMOC\Projects\Sharp MZ Series\MZ80K\github\MZ80K_SD\Z80\FD_rom2.english.asm
+# file opened: FD_rom2.english.asm
+ 1    0000                    ORG	0F000H
+ 2    F000
+ 3    F000 FF           			DB	0FFH             ;No ROM identification code
+ 4    F001 C3 13 F0     			JP		START
+ 5    F004              ;******************** Return to MONITOR CMT routine *************************************
+ 6    F004 C3 2A F0     			JP		MSHED
+ 7    F007 C3 30 F0     			JP		MSDAT
+ 8    F00A C3 36 F0     			JP		MLHED
+ 9    F00D C3 3C F0     			JP		MLDAT
+10    F010 C3 42 F0     			JP		MVRFY
+11    F013              START:							;This process starts when identification code is changed to ROM present (00H) and FD command is enabled
+12    F013 21 48 F0     			LD	HL,DATA			;Copy LENGTH bytes from DATA to TRNS and execute from DSTRT
+13    F016 ED 5B 26 F0  			LD	DE,(TRNS)
+14    F01A ED 4B 24 F0  			LD	BC,(LENGTH)
+15    F01E ED B0        			LDIR
+16    F020 2A 28 F0     			LD	HL,(DSTRT)
+17    F023 E9           			JP	(HL)
+18    F024              LENGTH:
+19    F024 C0 03        			DW 03C0H
+20    F026              TRNS:
+21    F026 40 5A        			DW 5A40H
+22    F028              DSTRT:
+23    F028 00 5B        			DW 5B00H
+24    F02A              MSHED:							;Return to jump destination
+25    F02A D5           			PUSH	DE			;PUSH here as substitute since we jumped here by overwriting a PUSH instruction
+26    F02B C5           			PUSH	BC
+27    F02C E5           			PUSH	HL
+28    F02D C3 3A 04     			JP	043AH
+29    F030              MSDAT:
+30    F030 D5           			PUSH	DE
+31    F031 C5           			PUSH	BC
+32    F032 E5           			PUSH	HL
+33    F033 C3 79 04     			JP	0479H
+34    F036              MLHED:
+35    F036 D5           			PUSH	DE
+36    F037 C5           			PUSH	BC
+37    F038 E5           			PUSH	HL
+38    F039 C3 DC 04     			JP	04DCH
+39    F03C              MLDAT:
+40    F03C D5           			PUSH	DE
+41    F03D C5           			PUSH	BC
+42    F03E E5           			PUSH	HL
+43    F03F C3 FC 04     			JP 04FCH
+44    F042              MVRFY:
+45    F042 D5           			PUSH	DE
+46    F043 C5           			PUSH	BC
+47    F044 E5           			PUSH	HL
+48    F045 C3 8C 05     			JP	058CH
+49    F048              DATA:							;Expand the program to be launched from here (4023 bytes available)
+50    F048              			END
+# file closed: FD_rom2.english.asm

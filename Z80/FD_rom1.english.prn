@@ -1,0 +1,1431 @@
+warning[backslash]: File name contains \, use / instead (\ fails on most of the supported platforms): E:\TNMOC\Projects\Sharp MZ Series\MZ80K\github\MZ80K_SD\Z80\FD_rom1.english.asm
+# file opened: FD_rom1.english.asm
+   1  0000              ;2021.12.12 Fix for garbled characters in FDP and FDM on MZ-700
+   2  0000              ;2022. 1.23 Fix bug in 04D8H MONITOR read information alternative processing
+   3  0000              ;2022. 1.24 Moved processing to fix trailing 20h padding in filename to 0dh from Arduino side to MZ-80K side
+   4  0000              ;2022. 1.25 Removed 8255 initialization from 0475H MONITOR write data alternative processing and 04F8H MONITOR read data alternative processing
+   5  0000              ;2022. 1.26 Removed restriction that only file type code 0x01 was loadable via FD command
+   6  0000              ;2022. 1.29 Removed interrupt enable (EI) on RETURN from CMT alternative processing
+   7  0000              ;2022. 1.31 Fix for machines/apps where app operation freezes after FD command execution
+   8  0000              ;2022. 1.31 FDL command spec change: for FDL x, compare first character of filename and output only matches
+   9  0000              ;           B key to display previous 20 entries
+  10  0000              ;2022. 2. 8 FDL command spec change: for FDL x, extended to match first 1 to 32 characters of filename
+  11  0000              ;2022. 2.10 Fixed to allow FDL command to be used from within 04D8H MONITOR read information alternative processing
+  12  0000              ;           Made FDL command processing into a subroutine
+  13  0000              ;2022. 2.11 Fixed bug where FDL command called from within 04D8H MONITOR read information alternative processing could not be used under MZ-700 MONITOR 1Z-009A, 1Z-009B environment
+  14  0000              ;
+  15  0000              GETL		EQU		0003H
+  16  0000              LETLN		EQU		0006H
+  17  0000              NEWLIN		EQU		0009H
+  18  0000              PRNTS		EQU		000CH
+  19  0000              MSGPR		EQU		0015H
+  20  0000              PLIST		EQU		0018H
+  21  0000              GETKEY		EQU		001BH
+  22  0000              TIMST		EQU		0033H
+  23  0000              PRTWRD		EQU		03BAH
+  24  0000              PRTBYT		EQU		03C3H
+  25  0000              HLHEX		EQU		0410H
+  26  0000              TWOHEX		EQU		041FH
+  27  0000              ADCN		EQU		0BB9H
+  28  0000              DISPCH		EQU		0DB5H
+  29  0000              DPCT		EQU		0DDCH
+  30  0000              IBUFE		EQU		10F0H
+  31  0000              FNAME		EQU		10F1H
+  32  0000              EADRS		EQU		1102H
+  33  0000              FSIZE		EQU		1102H
+  34  0000              SADRS		EQU		1104H
+  35  0000              EXEAD		EQU		1106H
+  36  0000              DSPX		EQU		1171H
+  37  0000              LBUF		EQU		11A3H
+  38  0000              MBUF		EQU		11AEH
+  39  0000              MONITOR_80K	EQU		0082H
+  40  0000              MONITOR_700	EQU		00ADH
+  41  0000              ;0D8H PORTA transmit data (lower 4 bits)
+  42  0000              ;0D9H PORTB receive data (8 bits)
+  43  0000              ;
+  44  0000              ;0DAH PORTC Bit
+  45  0000              ;7 IN  CHK
+  46  0000              ;6 IN
+  47  0000              ;5 IN
+  48  0000              ;4 IN
+  49  0000              ;3 OUT
+  50  0000              ;2 OUT FLG
+  51  0000              ;1 OUT
+  52  0000              ;0 OUT
+  53  0000              ;
+  54  0000              ;0DBH Control register
+  55  0000
+  56  0000
+  57  0000                     ORG		0F000H
+  58  F000
+  59  F000 00           		NOP                   ;ROM identification code
+  60  F001 C3 13 F0     		JP		START
+  61  F004              ;******************** MONITOR CMT routine alternative *************************************
+  62  F004 C3 95 F7     ENT1:	JP		MSHED
+  63  F007 C3 E3 F7     ENT2:	JP		MSDAT
+  64  F00A C3 17 F8     ENT3:	JP		MLHED
+  65  F00D C3 04 F9     ENT4:	JP		MLDAT
+  66  F010 C3 37 F9     ENT5:	JP		MVRFY
+  67  F013
+  68  F013 CD 82 F0     START:	CALL	INIT
+  69  F016 11 A3 11     		LD		DE,LBUF     ;Startup command unified to '*FD' for both MZ-80K and MZ-700
+  70  F019 1A           		LD		A,(DE)
+  71  F01A FE 2A        		CP		'*'
+  72  F01C C2 9C F1     		JP		NZ,MON
+  73  F01F 13           		INC 	DE
+  74  F020 1A           		LD		A,(DE)
+  75  F021 FE 46        		CP		'F'
+  76  F023 C2 9C F1     		JP		NZ,MON
+  77  F026 13           		INC		DE
+  78  F027 1A           		LD		A,(DE)
+  79  F028 FE 44        		CP		'D'
+  80  F02A C2 9C F1     		JP		NZ,MON
+  81  F02D
+  82  F02D 13           		INC		DE          ;Move to character after FD
+  83  F02E 1A           STT2:	LD		A,(DE)
+  84  F02F FE 20        		CP		20H         ;If there is 1 space after FD, load the rest as filename (filename up to 32 chars)
+  85  F031 28 5A        		JR		Z,SDLOAD
+  86  F033 FE 2F        		CP		'/'         ;If '/' follows FD, load the rest as filename but do not execute (filename up to 32 chars)
+  87  F035 28 56        		JR		Z,SDLOAD
+  88  F037 FE 0D        		CP		0DH         ;If FD alone followed by newline, load DEFNAME string as filename
+  89  F039 20 0D        		JR		NZ,STETC    ;If no match, check other commands
+  90  F03B D5           STT3:	PUSH	DE          ;Transfer configured filename (0000.mzt)
+  91  F03C 21 8B F7     		LD		HL,DEFNAME
+  92  F03F 13           		INC		DE
+  93  F040 01 05 00     		LD		BC,NEND-DEFNAME
+  94  F043 ED B0        		LDIR
+  95  F045 D1           		POP		DE
+  96  F046 18 45        		JR		SDLOAD      ;Go to LOAD processing
+  97  F048              STETC:
+  98  F048 FE 53        		CP		'S'         ;FDS: go to SAVE processing
+  99  F04A CA FF F0     		JP		Z,STSV
+ 100  F04D FE 41        		CP		'A'			;FDA: go to auto-start file setting processing
+ 101  F04F CA 12 F2     		JP		Z,STAS
+ 102  F052 FE 4C        		CP		'L'         ;FDL: file list display
+ 103  F054 CA 1D F2     		JP		Z,STLT
+ 104  F057 FE 44        		CP		'D'         ;FDD: DELETE
+ 105  F059 CA B8 F2     		JP		Z,STDE
+ 106  F05C FE 52        		CP		'R'         ;FDR: RENAME
+ 107  F05E CA F5 F2     		JP		Z,STRN
+ 108  F061 FE 50        		CP		'P'         ;FDP: DUMP
+ 109  F063 CA 22 F3     		JP		Z,STPR
+ 110  F066 FE 43        		CP		'C'         ;FDC: COPY
+ 111  F068 CA C7 F3     		JP		Z,STCP
+ 112  F06B FE 4D        		CP		'M'         ;FDM: MEMORY DUMP
+ 113  F06D CA F4 F3     		JP		Z,STMD
+ 114  F070 FE 57        		CP		'W'         ;FDW: MEMORY WRITE
+ 115  F072 CA 79 F4     		JP		Z,STMW
+ 116  F075 FE 5A        		CP		'Z'         ;FDZ: MZ-700 PATCH START
+ 117  F077 CA C6 F4     		JP		Z,STMZ
+ 118  F07A FE 55        		CP		'U'         ;FDU: MZ-700 shadow RAM START
+ 119  F07C CA 35 F5     		JP		Z,STURA
+ 120  F07F C3 4C F1     		JP		CMDERR
+ 121  F082
+ 122  F082              ;**** 8255 initialization ****
+ 123  F082              ;PORTC lower bits OUTPUT, upper bits INPUT, PORTB INPUT, PORTA OUTPUT
+ 124  F082 3E 8A        INIT:	LD		A,8AH
+ 125  F084 D3 DB        		OUT		(0DBH),A
+ 126  F086              ;Reset output bits
+ 127  F086 3E 00        INIT2:	LD		A,00H      ;PORTA <- 0
+ 128  F088 D3 D8        		OUT		(0D8H),A
+ 129  F08A D3 DA        		OUT		(0DAH),A   ;PORTC <- 0
+ 130  F08C C9           		RET
+ 131  F08D
+ 132  F08D              ;**** LOAD ****
+ 133  F08D              ;Set received header information and execute LOAD from SD card
+ 134  F08D 3E 81        SDLOAD:	LD		A,81H  ;LOAD command 81H
+ 135  F08F CD B8 F5     		CALL	STCMD
+ 136  F092 CD AC F0     		CALL	HDRCV      ;Receive header information
+ 137  F095 CD ED F0     		CALL	DBRCV      ;Receive data
+ 138  F098 3A A6 11     		LD		A,(LBUF+3)
+ 139  F09B FE 2F        		CP		'/'        ;If '*FD/', return to MONITOR command prompt without jumping to execution address
+ 140  F09D CA 9C F1     		JP		Z,MON
+ 141  F0A0              ; Fix for machines/apps where app operation freezes after FD command execution
+ 142  F0A0 3E 00        		LD		A,00H
+ 143  F0A2 11 00 00     		LD		DE,0000H
+ 144  F0A5 CD 33 00     		CALL	TIMST
+ 145  F0A8
+ 146  F0A8 2A 06 11     		LD		HL,(EXEAD)
+ 147  F0AB E9           		JP		(HL)
+ 148  F0AC
+ 149  F0AC              ;Receive header
+ 150  F0AC 21 F1 10     HDRCV:	LD		HL,FNAME
+ 151  F0AF 06 11        		LD		B,11H
+ 152  F0B1 CD 4C F5     HDRC1:	CALL	RCVBYTE    ;Receive filename
+ 153  F0B4 77           		LD		(HL),A
+ 154  F0B5 23           		INC		HL
+ 155  F0B6 05           		DEC		B
+ 156  F0B7 20 F8        		JR		NZ,HDRC1
+ 157  F0B9 11 CC F5     		LD		DE,MSG_LD  ;Display filename LOADING
+ 158  F0BC CD 15 00     		CALL	MSGPR
+ 159  F0BF 11 F1 10     		LD		DE,FNAME
+ 160  F0C2 CD 15 00     		CALL	MSGPR
+ 161  F0C5 CD 06 00     		CALL	LETLN
+ 162  F0C8 21 04 11     		LD		HL,SADRS  ;Get SADRS
+ 163  F0CB CD 4C F5     		CALL	RCVBYTE
+ 164  F0CE 77           		LD		(HL),A
+ 165  F0CF 23           		INC		HL
+ 166  F0D0 CD 4C F5     		CALL	RCVBYTE
+ 167  F0D3 77           		LD		(HL),A
+ 168  F0D4 21 02 11     		LD		HL,FSIZE   ;Get FSIZE
+ 169  F0D7 CD 4C F5     		CALL	RCVBYTE
+ 170  F0DA 77           		LD		(HL),A
+ 171  F0DB 23           		INC		HL
+ 172  F0DC CD 4C F5     		CALL	RCVBYTE
+ 173  F0DF 77           		LD		(HL),A
+ 174  F0E0 21 06 11     		LD		HL,EXEAD   ;Get EXEAD
+ 175  F0E3 CD 4C F5     		CALL	RCVBYTE
+ 176  F0E6 77           		LD		(HL),A
+ 177  F0E7 23           		INC		HL
+ 178  F0E8 CD 4C F5     		CALL	RCVBYTE
+ 179  F0EB 77           		LD		(HL),A
+ 180  F0EC C9           		RET
+ 181  F0ED
+ 182  F0ED              ;Receive data
+ 183  F0ED ED 5B 02 11  DBRCV:	LD		DE,(FSIZE)
+ 184  F0F1 2A 04 11     		LD		HL,(SADRS)
+ 185  F0F4 CD 4C F5     DBRLOP:	CALL	RCVBYTE
+ 186  F0F7 77           		LD		(HL),A
+ 187  F0F8 1B           		DEC		DE
+ 188  F0F9 7A           		LD		A,D
+ 189  F0FA B3           		OR		E
+ 190  F0FB 23           		INC		HL
+ 191  F0FC 20 F6        		JR		NZ,DBRLOP   ;LOOP until DE=0
+ 192  F0FE C9           		RET
+ 193  F0FF
+ 194  F0FF              ;**** SAVE ****
+ 195  F0FF 13           STSV:	INC		DE
+ 196  F100 13           		INC		DE
+ 197  F101 D5           		PUSH	DE
+ 198  F102 CD 10 04     		CALL	HLHEX       ;If 4-digit hex follows 1 space, set to SADRS and continue
+ 199  F105 38 3B        		JR		C,STSV1
+ 200  F107 22 04 11     		LD		(SADRS),HL      ;Save SADRS
+ 201  F10A D1           		POP		DE
+ 202  F10B 13           		INC		DE
+ 203  F10C 13           		INC		DE
+ 204  F10D 13           		INC		DE
+ 205  F10E 13           		INC		DE
+ 206  F10F 13           		INC		DE
+ 207  F110 D5           		PUSH	DE          ;Advance 5 chars, if 4-digit hex, set to EADRS and continue
+ 208  F111 CD 10 04     		CALL	HLHEX
+ 209  F114 38 2C        		JR		C,STSV1
+ 210  F116 E5           		PUSH	HL
+ 211  F117 ED 4B 04 11  		LD		BC,(SADRS)
+ 212  F11B ED 42        		SBC		HL,BC       ;Error if EADRS is not greater than SADRS
+ 213  F11D E1           		POP		HL
+ 214  F11E 28 22        		JR		Z,STSV1
+ 215  F120 38 20        		JR		C,STSV1
+ 216  F122
+ 217  F122 22 02 11     		LD		(EADRS),HL      ;Save EADRS
+ 218  F125 D1           		POP		DE
+ 219  F126 13           		INC		DE
+ 220  F127 13           		INC		DE
+ 221  F128 13           		INC		DE
+ 222  F129 13           		INC		DE
+ 223  F12A 13           		INC		DE          ;Advance 5 chars, if 4-digit hex, set to EXEAD and continue
+ 224  F12B D5           		PUSH	DE
+ 225  F12C CD 10 04     		CALL	HLHEX
+ 226  F12F 38 11        		JR		C,STSV1
+ 227  F131
+ 228  F131 22 06 11     		LD		(EXEAD),HL      ;Save EXEAD
+ 229  F134 D1           		POP		DE
+ 230  F135 13           		INC		DE
+ 231  F136 13           		INC		DE
+ 232  F137 13           		INC		DE
+ 233  F138 13           		INC		DE
+ 234  F139 13           		INC		DE			;Advance 5 chars, continue if filename present
+ 235  F13A 1A           		LD		A,(DE)
+ 236  F13B FE 31        		CP		31H
+ 237  F13D 38 08        		JR		C,STSV2
+ 238  F13F EB           		EX		DE,HL
+ 239  F140 18 0F        		JR		SDSAVE      ;Go to SAVE processing
+ 240  F142              STSV1:                      ;Failed to get 4-digit hex or EADRS not greater than SADRS
+ 241  F142 11 16 F6     		LD		DE,MSG_AD
+ 242  F145 18 4F        		JR		ERRMSG
+ 243  F147              STSV2:                      ;Failed to get filename
+ 244  F147 11 26 F6     		LD		DE,MSG_FNAME
+ 245  F14A 18 4A        		JR		ERRMSG
+ 246  F14C              CMDERR:                     ;Command error
+ 247  F14C 11 38 F6     		LD		DE,MSG_CMD
+ 248  F14F 18 45        		JR		ERRMSG
+ 249  F151
+ 250  F151              ;Set transmit header information and execute SAVE to SD card
+ 251  F151 3E 80        SDSAVE:	LD		A,80H      ;SAVE command 80H
+ 252  F153 CD 9E F5     		CALL	STCD
+ 253  F156 A7           		AND		A          ;ERROR if not 00
+ 254  F157 C2 6C F1     		JP		NZ,SVERR
+ 255  F15A CD B6 F1     		CALL	HDSEND     ;Send header information
+ 256  F15D CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+ 257  F160 A7           		AND		A          ;ERROR if not 00
+ 258  F161 20 09        		JR		NZ,SVERR
+ 259  F163 CD FB F1     		CALL	DBSEND     ;Send data
+ 260  F166 11 DF F5     		LD		DE,MSG_SV
+ 261  F169 18 2B        		JR		ERRMSG
+ 262  F16B
+ 263  F16B              SVER0:
+ 264  F16B D1           		POP		DE         ;Discard CALL source STACK
+ 265  F16C              SVERR:
+ 266  F16C FE F0        		CP		0F0H
+ 267  F16E 20 05        		JR		NZ,ERR3
+ 268  F170 11 48 F6     		LD		DE,MSG_F0  ;SD-CARD INITIALIZE ERROR
+ 269  F173 18 21        		JR		ERRMSG
+ 270  F175              ;Removed restriction that only file type code 0x01 was loadable via FD command
+ 271  F175              ;ERR2:	CP		0F2H
+ 272  F175              ;		JR		NZ,ERR3
+ 273  F175              ;		LD		DE,MSG_F2  ;NOT OBJECT FILE
+ 274  F175              ;		JR		ERRMSG
+ 275  F175 FE F1        ERR3:	CP		0F1H
+ 276  F177 20 05        		JR		NZ,ERR4
+ 277  F179 11 61 F6     		LD		DE,MSG_F1  ;NOT FIND FILE
+ 278  F17C 18 18        		JR		ERRMSG
+ 279  F17E FE F3        ERR4:	CP		0F3H
+ 280  F180 20 05        		JR		NZ,ERR5
+ 281  F182 11 6F F6     		LD		DE,MSG_F3  ;FILE EXIST
+ 282  F185 18 0F        		JR		ERRMSG
+ 283  F187 FE F4        ERR5:	CP		0F4H
+ 284  F189 20 05        		JR		NZ,ERR99
+ 285  F18B 11 38 F6     		LD		DE,MSG_CMD
+ 286  F18E 18 06        		JR		ERRMSG
+ 287  F190 CD C3 03     ERR99:	CALL	PRTBYT
+ 288  F193 11 84 F7     		LD		DE,MSG99   ;Other ERROR
+ 289  F196 CD 15 00     ERRMSG:	CALL	MSGPR
+ 290  F199 CD 06 00     		CALL	LETLN
+ 291  F19C 21 4E 01     MON:	LD		HL,014EH
+ 292  F19F 7E           		LD		A,(HL)
+ 293  F1A0 FE 50        		CP		'P'             ;If 014EH is 'P' then MZ-80K
+ 294  F1A2 CA 82 00     		JP		Z,MONITOR_80K
+ 295  F1A5 FE 4E        		CP		'N'             ;If 014EH is 'N' then FN-700
+ 296  F1A7 CA 82 00     		JP		Z,MONITOR_80K
+ 297  F1AA 21 EB 06     		LD		HL,06EBH
+ 298  F1AD 7E           		LD		A,(HL)
+ 299  F1AE FE 4D        		CP		'M'             ;If 06EBH is 'M' then MZ-700
+ 300  F1B0 CA AD 00     		JP		Z,MONITOR_700
+ 301  F1B3 C3 00 00     		JP		0000H           ;If unidentified, jump to 0000H
+ 302  F1B6
+ 303  F1B6              ;Send header
+ 304  F1B6 E5           HDSEND:	PUSH	HL
+ 305  F1B7 06 20        		LD		B,20H
+ 306  F1B9 7E           SS1:	LD		A,(HL)     ;Send FNAME
+ 307  F1BA CD 5F F5     		CALL	SNDBYTE
+ 308  F1BD 23           		INC		HL
+ 309  F1BE 05           		DEC		B
+ 310  F1BF 20 F8        		JR		NZ,SS1
+ 311  F1C1 3E 0D        		LD		A,0DH
+ 312  F1C3 CD 5F F5     		CALL	SNDBYTE
+ 313  F1C6 E1           		POP		HL
+ 314  F1C7 06 10        		LD		B,10H
+ 315  F1C9 7E           SS2:	LD		A,(HL)     ;Send PNAME
+ 316  F1CA CD 5F F5     		CALL	SNDBYTE
+ 317  F1CD 23           		INC		HL
+ 318  F1CE 05           		DEC		B
+ 319  F1CF 20 F8        		JR		NZ,SS2
+ 320  F1D1 3E 0D        		LD		A,0DH
+ 321  F1D3 CD 5F F5     		CALL	SNDBYTE
+ 322  F1D6 21 04 11     		LD		HL,SADRS   ;Send SADRS
+ 323  F1D9 7E           		LD		A,(HL)
+ 324  F1DA CD 5F F5     		CALL	SNDBYTE
+ 325  F1DD 23           		INC		HL
+ 326  F1DE 7E           		LD		A,(HL)
+ 327  F1DF CD 5F F5     		CALL	SNDBYTE
+ 328  F1E2 21 02 11     		LD		HL,EADRS   ;Send EADRS
+ 329  F1E5 7E           		LD		A,(HL)
+ 330  F1E6 CD 5F F5     		CALL	SNDBYTE
+ 331  F1E9 23           		INC		HL
+ 332  F1EA 7E           		LD		A,(HL)
+ 333  F1EB CD 5F F5     		CALL	SNDBYTE
+ 334  F1EE 21 06 11     		LD		HL,EXEAD   ;Send EXEAD
+ 335  F1F1 7E           		LD		A,(HL)
+ 336  F1F2 CD 5F F5     		CALL	SNDBYTE
+ 337  F1F5 23           		INC		HL
+ 338  F1F6 7E           		LD		A,(HL)
+ 339  F1F7 CD 5F F5     		CALL	SNDBYTE
+ 340  F1FA C9           		RET
+ 341  F1FB
+ 342  F1FB              ;Send data
+ 343  F1FB              ;Transmit from SADRS to EADRS
+ 344  F1FB 2A 02 11     DBSEND:	LD		HL,(EADRS)
+ 345  F1FE EB           		EX		DE,HL
+ 346  F1FF 2A 04 11     		LD		HL,(SADRS)
+ 347  F202 7E           DBSLOP:	LD		A,(HL)
+ 348  F203 CD 5F F5     		CALL	SNDBYTE
+ 349  F206 7C           		LD		A,H
+ 350  F207 BA           		CP		D
+ 351  F208 20 04        		JR		NZ,DBSLP1
+ 352  F20A 7D           		LD		A,L
+ 353  F20B BB           		CP		E
+ 354  F20C 28 03        		JR		Z,DBSLP2   ;LOOP until HL = DE
+ 355  F20E 23           DBSLP1:	INC		HL
+ 356  F20F 18 F1        		JR		DBSLOP
+ 357  F211 C9           DBSLP2:	RET
+ 358  F212
+ 359  F212              ;**** AUTO START SET ****
+ 360  F212 3E 82        STAS:	LD		A,82H      ;AUTO START SET command 82H
+ 361  F214 CD B8 F5     		CALL	STCMD
+ 362  F217 11 EE F5     		LD		DE,MSG_AS
+ 363  F21A C3 96 F1     		JP		ERRMSG
+ 364  F21D
+ 365  F21D
+ 366  F21D              ;**** DIRLIST ****
+ 367  F21D 13           STLT:	INC		DE
+ 368  F21E 21 90 F7     		LD		HL,DEFDIR         ;Prefix '*FD ' to allow cursor movement and execution with RETURN
+ 369  F221 01 05 00     		LD		BC,DEND-DEFDIR
+ 370  F224 CD 2E F2     		CALL	DIRLIST
+ 371  F227 A7           		AND		A                 ;ERROR if not 00
+ 372  F228 C2 6C F1     		JP		NZ,SVERR
+ 373  F22B C3 9C F1     		JP		MON
+ 374  F22E
+ 375  F22E
+ 376  F22E              ;**** DIRLIST main body (HL=start address of prefix string, BC=length of prefix string) ****
+ 377  F22E              ;****                    Return value: A=error code ****
+ 378  F22E              DIRLIST:
+ 379  F22E 3E 83        		LD		A,83H      ;Send DIRLIST command 83H
+ 380  F230 CD 9E F5     		CALL	STCD       ;Send command code
+ 381  F233 A7           		AND		A          ;ERROR if not 00
+ 382  F234 C2 B7 F2     		JP		NZ,DLRET
+ 383  F237
+ 384  F237 C5           		PUSH	BC
+ 385  F238 06 21        		LD		B,21H
+ 386  F23A 1A           STLT1:	LD		A,(DE)
+ 387  F23B FE 0D        		CP		0DH
+ 388  F23D 20 02        		JR		NZ,STLT2
+ 389  F23F 3E 00        		LD		A,00H
+ 390  F241 CD 5F F5     STLT2:	CALL	SNDBYTE           ;Send page indication
+ 391  F244 13           		INC		DE
+ 392  F245 05           		DEC		B
+ 393  F246 20 F2        		JR		NZ,STLT1
+ 394  F248 C1           		POP		BC
+ 395  F249              DL1:
+ 396  F249 E5           		PUSH	HL
+ 397  F24A C5           		PUSH	BC
+ 398  F24B              ;		LD		HL,DEFDIR         ;Prefix '*FD ' to allow cursor movement and execution with RETURN
+ 399  F24B 11 A3 11     		LD		DE,LBUF
+ 400  F24E              ;		LD		BC,DEND-DEFDIR
+ 401  F24E ED B0        		LDIR
+ 402  F250 EB           		EX		DE,HL
+ 403  F251 CD 4C F5     DL2:	CALL	RCVBYTE           ;One line ends when '00H' is received
+ 404  F254 FE 00        		CP		00H
+ 405  F256 28 0C        		JR		Z,DL3
+ 406  F258 FE FF        		CP		0FFH              ;End when '0FFH' is received
+ 407  F25A 28 15        		JR		Z,DL4
+ 408  F25C FE FE        		CP		0FEH              ;Pause and wait for one character input when '0FEH' is received
+ 409  F25E 28 18        		JR		Z,DL5
+ 410  F260 77           		LD		(HL),A
+ 411  F261 23           		INC		HL
+ 412  F262 18 ED        		JR		DL2
+ 413  F264 11 A3 11     DL3:	LD		DE,LBUF           ;Display one line and newline when '00H' is received
+ 414  F267 CD 15 00     		CALL	MSGPR
+ 415  F26A CD 06 00     		CALL	LETLN
+ 416  F26D C1           		POP		BC
+ 417  F26E E1           		POP		HL
+ 418  F26F 18 D8        		JR		DL1
+ 419  F271 CD 4C F5     DL4:	CALL	RCVBYTE           ;Get status (00H=OK)
+ 420  F274 C1           		POP		BC
+ 421  F275 E1           		POP		HL
+ 422  F276 18 3F        		JR		DLRET
+ 423  F278
+ 424  F278 11 7A F6     DL5:	LD		DE,MSG_KEY1        ;Display HIT ANY KEY
+ 425  F27B CD 15 00     		CALL	MSGPR
+ 426  F27E 3E C2        		LD		A,0C2H
+ 427  F280 CD B5 0D     		CALL	DISPCH
+ 428  F283 11 91 F6     		LD		DE,MSG_KEY2        ;Display HIT ANY KEY
+ 429  F286 CD 15 00     		CALL	MSGPR
+ 430  F289 CD 06 00     		CALL	LETLN
+ 431  F28C CD 1B 00     DL6:	CALL	GETKEY            ;Wait for one character input
+ 432  F28F FE 00        		CP		00H
+ 433  F291 28 F9        		JR		Z,DL6
+ 434  F293 FE 64        		CP		64H               ;Abort with SHIFT+BREAK
+ 435  F295 28 16        		JR		Z,DL7
+ 436  F297 FE 12        		CP		12H               ;Abort with cursor UP
+ 437  F299 28 08        		JR		Z,DL9
+ 438  F29B FE 42        		CP		42H               ;'B' for previous page
+ 439  F29D 28 10        		JR		Z,DL8
+ 440  F29F 3E 00        		LD		A,00H             ;Continue with any other key
+ 441  F2A1 18 0C        		JR		DL8
+ 442  F2A3 3E C2        DL9:	LD		A,0C2H            ;Move cursor 2 lines up when aborted with cursor UP
+ 443  F2A5 CD DC 0D     		CALL	DPCT
+ 444  F2A8 3E C2        		LD		A,0C2H
+ 445  F2AA CD DC 0D     		CALL	DPCT
+ 446  F2AD 3E FF        DL7:	LD		A,0FFH            ;Send 0FFH abort code
+ 447  F2AF CD 5F F5     DL8:	CALL	SNDBYTE
+ 448  F2B2 CD 06 00     		CALL	LETLN
+ 449  F2B5 18 9A        		JR		DL2
+ 450  F2B7
+ 451  F2B7              DLRET:
+ 452  F2B7 C9           		RET
+ 453  F2B8
+ 454  F2B8
+ 455  F2B8              ;**** FILE DELETE ****
+ 456  F2B8 3E 84        STDE:	LD		A,84H      ;FILE DELETE command 84H
+ 457  F2BA CD B8 F5     		CALL	STCMD
+ 458  F2BD
+ 459  F2BD 11 A1 F6     		LD		DE,MSG_DELQ ;Display 'DELETE?'
+ 460  F2C0 CD 15 00     		CALL	MSGPR
+ 461  F2C3 CD 06 00     		CALL	LETLN
+ 462  F2C6 CD 1B 00     STDE3:	CALL	GETKEY
+ 463  F2C9 FE 00        		CP		00H
+ 464  F2CB 28 F9        		JR		Z,STDE3
+ 465  F2CD FE 59        		CP		59H         ;If 'Y', send 00H as OK
+ 466  F2CF 20 04        		JR		NZ,STDE4
+ 467  F2D1 3E 00        		LD		A,00H
+ 468  F2D3 18 02        		JR		STDE5
+ 469  F2D5 3E FF        STDE4:	LD		A,0FFH      ;If not 'Y', send 0FFH as CANCEL
+ 470  F2D7 CD 5F F5     STDE5:	CALL	SNDBYTE
+ 471  F2DA CD 4C F5     		CALL	RCVBYTE
+ 472  F2DD FE 00        		CP		00H         ;If 00H received, DELETE complete
+ 473  F2DF 20 05        		JR		NZ,STDE6
+ 474  F2E1 11 C0 F6     		LD		DE,MSG_DELY ;Display 'DELETE OK'
+ 475  F2E4 18 0C        		JR		STDE8
+ 476  F2E6 FE 01        STDE6:	CP		01H         ;If 01H received, CANCEL complete
+ 477  F2E8 20 05        		JR		NZ,STDE7
+ 478  F2EA 11 CA F6     		LD		DE,MSG_DELN ;Display 'DELETE CANCEL'
+ 479  F2ED 18 03        		JR		STDE8
+ 480  F2EF C3 6C F1     STDE7:	JP		SVERR
+ 481  F2F2 C3 96 F1     STDE8:	JP		ERRMSG
+ 482  F2F5
+ 483  F2F5              ;**** FILE RENAME ****
+ 484  F2F5 3E 85        STRN:	LD		A,85H      ;FILE RENAME command 85H
+ 485  F2F7 CD B8 F5     		CALL	STCMD
+ 486  F2FA
+ 487  F2FA 11 D8 F6     		LD		DE,MSG_REN ;Display 'NEW NAME:'
+ 488  F2FD CD 15 00     		CALL	MSGPR
+ 489  F300
+ 490  F300 3E 09        		LD		A,09H
+ 491  F302 32 71 11     		LD		(DSPX),A  ;Move cursor to next position after 'NEW NAME:'
+ 492  F305 11 A3 11     		LD		DE,LBUF    ;Get NEW FILE NAME
+ 493  F308 CD 03 00     		CALL	GETL
+ 494  F30B 11 AB 11     		LD		DE,LBUF+8  ;Send NEW FILE NAME
+ 495  F30E CD 8F F5     		CALL	STFN
+ 496  F311 CD A5 F5     		CALL	STFS
+ 497  F314
+ 498  F314 CD 4C F5     		CALL	RCVBYTE
+ 499  F317 FE 00        		CP		00H         ;If 00H received, RENAME complete
+ 500  F319 C2 6C F1     		JP		NZ,SVERR
+ 501  F31C 11 24 F7     		LD		DE,MSG_RENY
+ 502  F31F C3 96 F1     		JP		ERRMSG
+ 503  F322
+ 504  F322              ;**** FILE DUMP ****
+ 505  F322 3E 86        STPR:	LD		A,86H      ;FILE DUMP command 86H
+ 506  F324 CD B8 F5     		CALL	STCMD
+ 507  F327
+ 508  F327              ;		LD		A,0C6H     ;Clear screen
+ 509  F327              ;		CALL	DPCT
+ 510  F327 21 04 11     STPR6:	LD		HL,SADRS   ;Get SADRS
+ 511  F32A CD 4C F5     		CALL	RCVBYTE
+ 512  F32D 77           		LD		(HL),A
+ 513  F32E 23           		INC		HL
+ 514  F32F CD 4C F5     		CALL	RCVBYTE
+ 515  F332 77           		LD		(HL),A
+ 516  F333 2A 04 11     		LD		HL,(SADRS)
+ 517  F336 7C           		LD		A,H
+ 518  F337 FE FF        		CP		0FFH        ;If 0FFFFH is sent as ADRS, end DUMP processing
+ 519  F339 20 08        		JR		NZ,STPR7
+ 520  F33B 7D           		LD		A,L
+ 521  F33C FE FF        		CP		0FFH
+ 522  F33E 20 03        		JR		NZ,STPR7
+ 523  F340 C3 C1 F3     		JP		STPR8
+ 524  F343 11 2E F7     STPR7:	LD		DE,MSG_AD1 ;Display DUMP TITLE
+ 525  F346 CD 15 00     		CALL	MSGPR
+ 526  F349 CD 06 00     		CALL	LETLN
+ 527  F34C 0E 10        		LD		C,10H      ;Display 16 rows (128 bytes)
+ 528  F34E C5           STPR0:	PUSH	BC
+ 529  F34F 06 08        		LD		B,08H      ;Receive one row (8 bytes)
+ 530  F351 21 A3 11     		LD		HL,LBUF
+ 531  F354 CD 4C F5     STPR1:	CALL	RCVBYTE
+ 532  F357 77           		LD		(HL),A
+ 533  F358 23           		INC		HL
+ 534  F359 05           		DEC		B
+ 535  F35A 20 F8        		JR		NZ,STPR1
+ 536  F35C
+ 537  F35C 2A 04 11     		LD		HL,(SADRS) ;Display address
+ 538  F35F CD BA 03     		CALL	PRTWRD
+ 539  F362 11 08 00     		LD		DE,0008H   ;Self-increment address since not received during one screen (128 bytes)
+ 540  F365 19           		ADD		HL,DE
+ 541  F366 22 04 11     		LD		(SADRS),HL
+ 542  F369
+ 543  F369 06 08        		LD		B,08H      ;Display one row (8 bytes) of data in hex
+ 544  F36B 11 A3 11     		LD		DE,LBUF
+ 545  F36E CD 0C 00     STPR2:	CALL	PRNTS
+ 546  F371 1A           		LD		A,(DE)
+ 547  F372 CD C3 03     		CALL	PRTBYT
+ 548  F375 13           		INC		DE
+ 549  F376 05           		DEC		B
+ 550  F377 20 F5        		JR		NZ,STPR2
+ 551  F379
+ 552  F379 CD 0C 00     		CALL	PRNTS
+ 553  F37C 11 A3 11     		LD		DE,LBUF    ;Display one row (8 bytes) of data as characters
+ 554  F37F 06 08        		LD		B,08H
+ 555  F381 1A           STPR9:	LD		A,(DE)
+ 556  F382 FE 10        		CP		10H        ;Fix for garbled characters on MZ-700
+ 557  F384 30 02        		JR		NC,STPRA
+ 558  F386 3E 20        		LD		A,20H
+ 559  F388 CD B9 0B     STPRA:	CALL	ADCN
+ 560  F38B CD B5 0D     		CALL	DISPCH
+ 561  F38E 13           		INC		DE
+ 562  F38F 05           		DEC		B
+ 563  F390 20 EF        		JR		NZ,STPR9
+ 564  F392
+ 565  F392 CD 06 00     		CALL	LETLN
+ 566  F395 C1           		POP		BC
+ 567  F396 0D           		DEC		C
+ 568  F397 20 B5        		JR		NZ,STPR0
+ 569  F399
+ 570  F399 11 54 F7     		LD		DE,MSG_AD2        ;Display input wait message
+ 571  F39C CD 15 00     		CALL	MSGPR
+ 572  F39F CD 06 00     		CALL	LETLN
+ 573  F3A2 CD 06 00     		CALL	LETLN
+ 574  F3A5 CD 1B 00     STPR3:	CALL	GETKEY            ;Wait for one character input
+ 575  F3A8 FE 00        		CP		00H
+ 576  F3AA 28 F9        		JR		Z,STPR3
+ 577  F3AC FE 64        		CP		64H               ;Abort with SHIFT+BREAK
+ 578  F3AE 28 06        		JR		Z,STPR4
+ 579  F3B0 CD 5F F5     		CALL	SNDBYTE           ;Send ASCII code as-is for other keys, Arduino side handles 'B'
+ 580  F3B3 C3 27 F3     		JP		STPR6
+ 581  F3B6 3E FF        STPR4:	LD		A,0FFH            ;Send 0FFH abort code
+ 582  F3B8 CD 5F F5     STPR5:	CALL	SNDBYTE
+ 583  F3BB CD 4C F5     		CALL	RCVBYTE           ;Discard received ADRS '0FFFFH' and status code on SHIFT+BREAK abort
+ 584  F3BE CD 4C F5     		CALL	RCVBYTE
+ 585  F3C1 CD 4C F5     STPR8:	CALL	RCVBYTE
+ 586  F3C4 C3 9C F1     		JP		MON
+ 587  F3C7
+ 588  F3C7              ;**** FILE COPY ****
+ 589  F3C7 3E 87        STCP:	LD		A,87H      ;FILE COPY command 87H
+ 590  F3C9 CD B8 F5     		CALL	STCMD
+ 591  F3CC 11 D8 F6     		LD		DE,MSG_REN ;Display 'NEW NAME:'
+ 592  F3CF CD 15 00     		CALL	MSGPR
+ 593  F3D2
+ 594  F3D2 3E 09        		LD		A,09H
+ 595  F3D4 32 71 11     		LD		(DSPX),A    ;Move cursor to next position after 'NEW NAME:'
+ 596  F3D7 11 A3 11     		LD		DE,LBUF      ;Get NEW FILE NAME
+ 597  F3DA CD 03 00     		CALL	GETL
+ 598  F3DD 11 AB 11     		LD		DE,LBUF+8    ;Send NEW FILE NAME
+ 599  F3E0 CD 8F F5     		CALL	STFN
+ 600  F3E3 CD A5 F5     		CALL	STFS
+ 601  F3E6
+ 602  F3E6 CD 4C F5     		CALL	RCVBYTE
+ 603  F3E9 FE 00        		CP		00H         ;If 00H received, RENAME complete
+ 604  F3EB C2 6C F1     		JP		NZ,SVERR
+ 605  F3EE 11 76 F7     		LD		DE,MSG_CPY
+ 606  F3F1 C3 96 F1     		JP		ERRMSG
+ 607  F3F4
+ 608  F3F4              ;**** MEMORY DUMP ****
+ 609  F3F4 13           STMD:	INC		DE
+ 610  F3F5 13           		INC		DE
+ 611  F3F6 CD 10 04     		CALL	HLHEX       ;If 4-digit hex follows 1 space, set to SADRS and continue
+ 612  F3F9 DA 42 F1     		JP		C,STSV1
+ 613  F3FC 22 04 11     		LD		(SADRS),HL      ;Save SADRS
+ 614  F3FF
+ 615  F3FF 11 2E F7     STMD6:	LD		DE,MSG_AD1 ;Display DUMP TITLE
+ 616  F402 CD 15 00     		CALL	MSGPR
+ 617  F405 CD 06 00     		CALL	LETLN
+ 618  F408 0E 10        		LD		C,10H      ;Display 16 rows (128 bytes)
+ 619  F40A 2A 04 11     STMD7:	LD		HL,(SADRS) ;Display address
+ 620  F40D CD BA 03     		CALL	PRTWRD
+ 621  F410 CD 0C 00     		CALL	PRNTS
+ 622  F413
+ 623  F413
+ 624  F413 06 08        		LD		B,08H      ;Display one row (8 bytes) of data in hex
+ 625  F415 7E           STMD0:	LD		A,(HL)
+ 626  F416 CD C3 03     		CALL	PRTBYT
+ 627  F419 CD 0C 00     		CALL	PRNTS
+ 628  F41C CD 1B 00     		CALL	GETKEY
+ 629  F41F FE 64        		CP		64H
+ 630  F421 28 53        		JR		Z,STMD4
+ 631  F423 23           		INC		HL
+ 632  F424 05           		DEC		B
+ 633  F425 20 EE        		JR		NZ,STMD0
+ 634  F427
+ 635  F427 2A 04 11     		LD		HL,(SADRS)
+ 636  F42A 06 08        		LD		B,08H      ;Display one row (8 bytes) of data as characters
+ 637  F42C 7E           STMD2:	LD		A,(HL)
+ 638  F42D FE 10        		CP		10H        ;Fix for garbled characters on MZ-700
+ 639  F42F 30 02        		JR		NC,STMD8
+ 640  F431 3E 20        		LD		A,20H
+ 641  F433 CD B9 0B     STMD8:	CALL	ADCN
+ 642  F436 CD B5 0D     		CALL	DISPCH
+ 643  F439 CD 1B 00     		CALL	GETKEY
+ 644  F43C FE 64        		CP		64H        ;Abort with SHIFT+BREAK even during display
+ 645  F43E 28 36        		JR		Z,STMD4
+ 646  F440 23           		INC		HL
+ 647  F441 05           		DEC		B
+ 648  F442 20 E8        		JR		NZ,STMD2
+ 649  F444
+ 650  F444 22 04 11     		LD		(SADRS),HL
+ 651  F447 CD 06 00     		CALL	LETLN
+ 652  F44A
+ 653  F44A 0D           		DEC		C
+ 654  F44B 20 BD        		JR		NZ,STMD7
+ 655  F44D
+ 656  F44D 11 54 F7     		LD		DE,MSG_AD2        ;Display input wait message
+ 657  F450 CD 15 00     		CALL	MSGPR
+ 658  F453 CD 06 00     		CALL	LETLN
+ 659  F456 CD 06 00     		CALL	LETLN
+ 660  F459 CD 1B 00     STMD3:	CALL	GETKEY            ;Wait for one character input
+ 661  F45C FE 00        		CP		00H
+ 662  F45E 28 F9        		JR		Z,STMD3
+ 663  F460 FE 64        		CP		64H               ;Abort with SHIFT+BREAK
+ 664  F462 28 12        		JR		Z,STMD4
+ 665  F464 FE 42        		CP		42H
+ 666  F466 20 0B        		JR		NZ,STMD5
+ 667  F468 2A 04 11     		LD		HL,(SADRS)
+ 668  F46B 11 00 01     		LD		DE,0100H
+ 669  F46E ED 52        		SBC		HL,DE
+ 670  F470 22 04 11     		LD		(SADRS),HL
+ 671  F473 C3 FF F3     STMD5:	JP		STMD6
+ 672  F476 C3 9C F1     STMD4:	JP		MON
+ 673  F479
+ 674  F479              ;**** MEMORY WRITE ****
+ 675  F479 13           STMW:	INC		DE
+ 676  F47A 13           		INC		DE
+ 677  F47B CD 10 04     		CALL	HLHEX       ;If 4-digit hex follows 1 space, set to HL and continue
+ 678  F47E DA 42 F1     		JP		C,STSV1
+ 679  F481
+ 680  F481 13           		INC		DE
+ 681  F482 13           		INC		DE
+ 682  F483 13           		INC		DE
+ 683  F484 13           		INC		DE
+ 684  F485 1A           STSP1:	LD		A,(DE)
+ 685  F486 FE 0D        		CP		0DH
+ 686  F488 28 39        		JR		Z,STMW9     ;If address only, end
+ 687  F48A FE 20        		CP		20H
+ 688  F48C 20 03        		JR		NZ,STMW1
+ 689  F48E 13           		INC		DE          ;Skip spaces
+ 690  F48F 18 F4        		JR		STSP1
+ 691  F491
+ 692  F491              STMW1:
+ 693  F491 CD 1F 04     		CALL	TWOHEX
+ 694  F494 38 0E        		JR		C,STMW8
+ 695  F496 77           		LD		(HL),A      ;If 2-digit hex present, write to (HL)
+ 696  F497 23           		INC		HL
+ 697  F498
+ 698  F498 1A           STSP2:	LD		A,(DE)
+ 699  F499 FE 0D        		CP		0DH         ;End of line
+ 700  F49B 28 07        		JR		Z,STMW8
+ 701  F49D FE 20        		CP		20H
+ 702  F49F 20 F0        		JR		NZ,STMW1
+ 703  F4A1 13           		INC		DE          ;Skip spaces
+ 704  F4A2 18 F4        		JR		STSP2
+ 705  F4A4
+ 706  F4A4              STMW8:
+ 707  F4A4 11 7E F7     		LD		DE,MSG_FDW  ;'*FDW ' at line start
+ 708  F4A7 CD 15 00     		CALL	MSGPR
+ 709  F4AA CD BA 03     		CALL	PRTWRD      ;Display address
+ 710  F4AD CD 0C 00     		CALL	PRNTS
+ 711  F4B0 11 A3 11     		LD		DE,LBUF     ;Input one line
+ 712  F4B3 CD 03 00     		CALL	GETL
+ 713  F4B6 11 A3 11     		LD		DE,LBUF
+ 714  F4B9 1A           		LD		A,(DE)
+ 715  F4BA FE 1B        		CP		1BH
+ 716  F4BC 28 05        		JR		Z,STMW9     ;Discard and end with SHIFT+BREAK
+ 717  F4BE 11 A6 11     		LD		DE,LBUF+3
+ 718  F4C1 18 B6        		JR		STMW
+ 719  F4C3 C3 9C F1     STMW9:	JP		MON
+ 720  F4C6
+ 721  F4C6              ;**** MZ-700 PATCH START ****
+ 722  F4C6 F3           STMZ:	DI
+ 723  F4C7 21 00 00     		LD		HL,0000H      ;Copy ROM to 2000H
+ 724  F4CA 11 00 20     		LD		DE,2000H
+ 725  F4CD 01 00 10     		LD		BC,1000H
+ 726  F4D0 ED B0        		LDIR
+ 727  F4D2 D3 E0        		OUT		(0E0H),A      ;Shadow RAM ON
+ 728  F4D4 21 00 20     		LD		HL,2000H      ;Copy ROM contents to shadow RAM
+ 729  F4D7 11 00 00     		LD		DE,0000H
+ 730  F4DA 01 00 10     		LD		BC,1000H
+ 731  F4DD ED B0        		LDIR
+ 732  F4DF 21 08 F5     		LD		HL,STMZ2      ;Rewrite addresses
+ 733  F4E2 11 26 F5     		LD		DE,STMZ3      ;Rewrite data
+ 734  F4E5 06 0F        		LD		B,0FH
+ 735  F4E7 C5           STMZ1:	PUSH	BC
+ 736  F4E8 4E           		LD		C,(HL)
+ 737  F4E9 23           		INC		HL
+ 738  F4EA 46           		LD		B,(HL)
+ 739  F4EB 1A           		LD		A,(DE)
+ 740  F4EC 02           		LD		(BC),A
+ 741  F4ED C1           		POP		BC
+ 742  F4EE 13           		INC		DE
+ 743  F4EF 23           		INC		HL
+ 744  F4F0 05           		DEC		B
+ 745  F4F1 20 F4        		JR		NZ,STMZ1
+ 746  F4F3 21 AD 00     		LD		HL,00ADH
+ 747  F4F6 7E           		LD		A,(HL)
+ 748  F4F7 FE CD        		CP		0CDH
+ 749  F4F9 C2 00 00     		JP		NZ,0000H         ;If cannot identify as MZ-700, start from 0000H
+ 750  F4FC 11 FF F5     		LD		DE,MSG_ST
+ 751  F4FF CD 15 00     		CALL	MSGPR
+ 752  F502 CD 06 00     		CALL	LETLN
+ 753  F505 C3 AD 00     		JP		MONITOR_700      ;If identified as MZ-700, start from 00ADH
+ 754  F508
+ 755  F508 37 04 38 04  STMZ2:	DW		0437H,0438H,0439H
+ 755  F50C 39 04
+ 756  F50E 76 04 77 04  		DW		0476H,0477H,0478H
+ 756  F512 78 04
+ 757  F514 D9 04 DA 04  		DW		04D9H,04DAH,04DBH
+ 757  F518 DB 04
+ 758  F51A F9 04 FA 04  		DW		04F9H,04FAH,04FBH
+ 758  F51E FB 04
+ 759  F520 89 05 8A 05  		DW		0589H,058AH,058BH
+ 759  F524 8B 05
+ 760  F526
+ 761  F526 C3           STMZ3:	DB		0C3H
+ 762  F527 04 F0        		DW		ENT1
+ 763  F529 C3           		DB		0C3H
+ 764  F52A 07 F0        		DW		ENT2
+ 765  F52C C3           		DB		0C3H
+ 766  F52D 0A F0        		DW		ENT3
+ 767  F52F C3           		DB		0C3H
+ 768  F530 0D F0        		DW		ENT4
+ 769  F532 C3           		DB		0C3H
+ 770  F533 10 F0        		DW		ENT5
+ 771  F535
+ 772  F535              ;**** MZ-700 shadow RAM START ****
+ 773  F535 D3 E0        STURA:	OUT		(0E0H),A      ;Shadow RAM ON
+ 774  F537 21 AD 00     		LD		HL,00ADH
+ 775  F53A 7E           		LD		A,(HL)
+ 776  F53B FE CD        		CP		0CDH
+ 777  F53D C2 00 00     		JP		NZ,0000H         ;If not 0CDH, assume NZ-700 etc. and start from 0000H
+ 778  F540 11 FF F5     		LD		DE,MSG_ST
+ 779  F543 CD 15 00     		CALL	MSGPR
+ 780  F546 CD 06 00     		CALL	LETLN
+ 781  F549 C3 AD 00     		JP		MONITOR_700      ;If (00ADH) is 0CDH, assume patched MONITOR of 1Z-009A or 1Z-009B and start from 00ADH
+ 782  F54C
+ 783  F54C              ;**** Receive 1 BYTE ****
+ 784  F54C              ;Set received DATA in A register and return
+ 785  F54C              RCVBYTE:
+ 786  F54C CD 81 F5     		CALL	F1CHK      ;LOOP until PORTC BIT7 becomes 1
+ 787  F54F DB D9        		IN		A,(0D9h)   ;PORTB -> A
+ 788  F551 F5           		PUSH 	AF
+ 789  F552 3E 05        		LD		A,05H
+ 790  F554 D3 DB        		OUT		(0DBH),A    ;PORTC BIT2 <- 1
+ 791  F556 CD 88 F5     		CALL	F2CHK      ;LOOP until PORTC BIT7 becomes 0
+ 792  F559 3E 04        		LD		A,04H
+ 793  F55B D3 DB        		OUT		(0DBH),A    ;PORTC BIT2 <- 0
+ 794  F55D F1           		POP 	AF
+ 795  F55E C9           		RET
+ 796  F55F
+ 797  F55F              ;**** Send 1 BYTE ****
+ 798  F55F              ;Send contents of A register to PORTA lower 4 bits, 4 bits at a time
+ 799  F55F              SNDBYTE:
+ 800  F55F F5           		PUSH	AF
+ 801  F560 1F           		RRA
+ 802  F561 1F           		RRA
+ 803  F562 1F           		RRA
+ 804  F563 1F           		RRA
+ 805  F564 E6 0F        		AND		0FH
+ 806  F566 CD 70 F5     		CALL	SND4BIT
+ 807  F569 F1           		POP		AF
+ 808  F56A E6 0F        		AND		0FH
+ 809  F56C CD 70 F5     		CALL	SND4BIT
+ 810  F56F C9           		RET
+ 811  F570
+ 812  F570              ;**** Send 4 BITS ****
+ 813  F570              ;Send lower 4 bits of A register
+ 814  F570              SND4BIT:
+ 815  F570 D3 D8        		OUT		(0D8H),A
+ 816  F572 3E 05        		LD		A,05H
+ 817  F574 D3 DB        		OUT		(0DBH),A    ;PORTC BIT2 <- 1
+ 818  F576 CD 81 F5     		CALL	F1CHK      ;LOOP until PORTC BIT7 becomes 1
+ 819  F579 3E 04        		LD		A,04H
+ 820  F57B D3 DB        		OUT		(0DBH),A    ;PORTC BIT2 <- 0
+ 821  F57D CD 88 F5     		CALL	F2CHK
+ 822  F580 C9           		RET
+ 823  F581
+ 824  F581              ;**** Check BUSY (1) ****
+ 825  F581              ; Loop until 82H BIT7 becomes 1
+ 826  F581 DB DA        F1CHK:	IN		A,(0DAH)
+ 827  F583 E6 80        		AND		80H        ;PORTC BIT7 = 1?
+ 828  F585 28 FA        		JR		Z,F1CHK
+ 829  F587 C9           		RET
+ 830  F588
+ 831  F588              ;**** Check BUSY (0) ****
+ 832  F588              ; Loop until 82H BIT7 becomes 0
+ 833  F588 DB DA        F2CHK:	IN		A,(0DAH)
+ 834  F58A E6 80        		AND		80H        ;PORTC BIT7 = 0?
+ 835  F58C 20 FA        		JR		NZ,F2CHK
+ 836  F58E C9           		RET
+ 837  F58F
+ 838  F58F              ;****** Get FILE NAME (IN: DE next character after command, OUT: HL start of filename) *********
+ 839  F58F F5           STFN:	PUSH	AF
+ 840  F590 13           STFN1:	INC		DE         ;Skip spaces up to filename
+ 841  F591 1A           		LD		A,(DE)
+ 842  F592 FE 20        		CP		20H
+ 843  F594 28 FA        		JR		Z,STFN1
+ 844  F596 FE 30        		CP		30H        ;Error if character is not '0' or higher
+ 845  F598 DA 47 F1     		JP		C,STSV2
+ 846  F59B EB           		EX		DE,HL
+ 847  F59C F1           		POP		AF
+ 848  F59D C9           		RET
+ 849  F59E
+ 850  F59E              ;**** Send command (IN: A command code) ****
+ 851  F59E CD 5F F5     STCD:	CALL	SNDBYTE    ;Send command code in A register
+ 852  F5A1 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+ 853  F5A4 C9           		RET
+ 854  F5A5
+ 855  F5A5              ;**** Send filename (IN: HL start of filename) ******
+ 856  F5A5 06 20        STFS:	LD		B,20H
+ 857  F5A7 7E           STFS1:	LD		A,(HL)     ;Send FNAME
+ 858  F5A8 CD 5F F5     		CALL	SNDBYTE
+ 859  F5AB 23           		INC		HL
+ 860  F5AC 05           		DEC		B
+ 861  F5AD 20 F8        		JR		NZ,STFS1
+ 862  F5AF 3E 0D        		LD		A,0DH
+ 863  F5B1 CD 5F F5     		CALL	SNDBYTE
+ 864  F5B4 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+ 865  F5B7 C9           		RET
+ 866  F5B8
+ 867  F5B8              ;**** Send command and filename (IN: A command code, HL: start of filename) ****
+ 868  F5B8 CD 8F F5     STCMD:	CALL	STFN       ;Get filename
+ 869  F5BB E5           		PUSH	HL
+ 870  F5BC CD 9E F5     		CALL	STCD       ;Send command code
+ 871  F5BF E1           		POP		HL
+ 872  F5C0 A7           		AND		A          ;ERROR if not 00
+ 873  F5C1 C2 6B F1     		JP		NZ,SVER0
+ 874  F5C4 CD A5 F5     		CALL	STFS       ;Send filename
+ 875  F5C7 A7           		AND		A          ;ERROR if not 00
+ 876  F5C8 C2 6B F1     		JP		NZ,SVER0
+ 877  F5CB C9           		RET
+ 878  F5CC
+ 879  F5CC              ;******** MESSAGE DATA ********************
+ 880  F5CC              MSG_LD:
+ 881  F5CC 16           		DB		16H
+ 882  F5CD 4C 4F 41 44  		DB		'LOADING '
+ 882  F5D1 49 4E 47 20
+ 883  F5D5 0D           		DB		0DH
+ 884  F5D6
+ 885  F5D6              WRMSG:
+ 886  F5D6 57 52 49 54  		DB		'WRITING '
+ 886  F5DA 49 4E 47 20
+ 887  F5DE 0D           		DB		0DH
+ 888  F5DF
+ 889  F5DF              MSG_SV:
+ 890  F5DF 53 41 56 45  		DB		'SAVE FINISHED!'
+ 890  F5E3 20 46 49 4E
+ 890  F5E7 49 53 48 45
+ 890  F5EB 44 21
+ 891  F5ED 0D           		DB		0DH
+ 892  F5EE
+ 893  F5EE              MSG_AS:
+ 894  F5EE 41 53 54 41  		DB		'ASTART FINISHED!'
+ 894  F5F2 52 54 20 46
+ 894  F5F6 49 4E 49 53
+ 894  F5FA 48 45 44 21
+ 895  F5FE 0D           		DB		0DH
+ 896  F5FF
+ 897  F5FF              MSG_ST:
+ 898  F5FF 50 41 54 43  		DB		'PATCHED MONITOR START!'
+ 898  F603 48 45 44 20
+ 898  F607 4D 4F 4E 49
+ 898  F60B 54 4F 52 20
+ 898  F60F 53 54 41 52
+ 898  F613 54 21
+ 899  F615 0D           		DB		0DH
+ 900  F616
+ 901  F616              MSG_AD:
+ 902  F616 41 44 44 52  		DB		'ADDRESS FAILED!'
+ 902  F61A 45 53 53 20
+ 902  F61E 46 41 49 4C
+ 902  F622 45 44 21
+ 903  F625 0D           		DB		0DH
+ 904  F626
+ 905  F626              MSG_FNAME:
+ 906  F626 46 49 4C 45  		DB		'FILE NAME FAILED!'
+ 906  F62A 20 4E 41 4D
+ 906  F62E 45 20 46 41
+ 906  F632 49 4C 45 44
+ 906  F636 21
+ 907  F637 0D           		DB		0DH
+ 908  F638
+ 909  F638              MSG_CMD:
+ 910  F638 43 4F 4D 4D  		DB		'COMMAND FAILED!'
+ 910  F63C 41 4E 44 20
+ 910  F640 46 41 49 4C
+ 910  F644 45 44 21
+ 911  F647 0D           		DB		0DH
+ 912  F648
+ 913  F648              MSG_F0:
+ 914  F648 53 44 2D 43  		DB		'SD-CARD INITIALIZE ERROR'
+ 914  F64C 41 52 44 20
+ 914  F650 49 4E 49 54
+ 914  F654 49 41 4C 49
+ 914  F658 5A 45 20 45
+ 914  F65C 52 52 4F 52
+ 915  F660 0D           		DB		0DH
+ 916  F661
+ 917  F661              MSG_F1:
+ 918  F661 4E 4F 54 20  		DB		'NOT FIND FILE'
+ 918  F665 46 49 4E 44
+ 918  F669 20 46 49 4C
+ 918  F66D 45
+ 919  F66E 0D           		DB		0DH
+ 920  F66F
+ 921  F66F              ;MSG_F2:
+ 922  F66F              ;		DB		'NOT OBJECT FILE'
+ 923  F66F              ;		DB		0DH
+ 924  F66F
+ 925  F66F              MSG_F3:
+ 926  F66F 46 49 4C 45  		DB		'FILE EXIST'
+ 926  F673 20 45 58 49
+ 926  F677 53 54
+ 927  F679 0D           		DB		0DH
+ 928  F67A
+ 929  F67A              MSG_KEY1:
+ 930  F67A 4E 45 58 54  		DB		'NEXT:ANY BACK:B BREAK:'
+ 930  F67E 3A 41 4E 59
+ 930  F682 20 42 41 43
+ 930  F686 4B 3A 42 20
+ 930  F68A 42 52 45 41
+ 930  F68E 4B 3A
+ 931  F690 0D           		DB		0DH
+ 932  F691              MSG_KEY2:
+ 933  F691 20 4F 52 20  		DB		' OR SHIFT+BREAK'
+ 933  F695 53 48 49 46
+ 933  F699 54 2B 42 52
+ 933  F69D 45 41 4B
+ 934  F6A0 0D           		DB		0DH
+ 935  F6A1
+ 936  F6A1              MSG_DELQ:
+ 937  F6A1 46 49 4C 45  		DB		'FILE DELETE?(Y:OK ELSE:CANSEL)'
+ 937  F6A5 20 44 45 4C
+ 937  F6A9 45 54 45 3F
+ 937  F6AD 28 59 3A 4F
+ 937  F6B1 4B 20 45 4C
+ 937  F6B5 53 45 3A 43
+ 937  F6B9 41 4E 53 45
+ 937  F6BD 4C 29
+ 938  F6BF 0D           		DB		0DH
+ 939  F6C0
+ 940  F6C0              MSG_DELY:
+ 941  F6C0 44 45 4C 45  		DB		'DELETE OK'
+ 941  F6C4 54 45 20 4F
+ 941  F6C8 4B
+ 942  F6C9 0D           		DB		0DH
+ 943  F6CA
+ 944  F6CA              MSG_DELN:
+ 945  F6CA 44 45 4C 45  		DB		'DELETE CANSEL'
+ 945  F6CE 54 45 20 43
+ 945  F6D2 41 4E 53 45
+ 945  F6D6 4C
+ 946  F6D7 0D           		DB		0DH
+ 947  F6D8
+ 948  F6D8              MSG_REN:
+ 949  F6D8 4E 45 57 20  		DB		'NEW NAME:                            '
+ 949  F6DC 4E 41 4D 45
+ 949  F6E0 3A 20 20 20
+ 949  F6E4 20 20 20 20
+ 949  F6E8 20 20 20 20
+ 949  F6EC 20 20 20 20
+ 949  F6F0 20 20 20 20
+ 949  F6F4 20 20 20 20
+ 949  F6F8 20 20 20 20
+ 949  F6FC 20
+ 950  F6FD 0D           		DB		0DH
+ 951  F6FE
+ 952  F6FE              MSG_DNAME:
+ 953  F6FE 44 4F 53 20  		DB		'DOS FILE:'
+ 953  F702 46 49 4C 45
+ 953  F706 3A
+ 954  F707              MSG_DNAMEEND:
+ 955  F707 20 20 20 20  		DB		'                            '
+ 955  F70B 20 20 20 20
+ 955  F70F 20 20 20 20
+ 955  F713 20 20 20 20
+ 955  F717 20 20 20 20
+ 955  F71B 20 20 20 20
+ 955  F71F 20 20 20 20
+ 956  F723 0D           		DB		0DH
+ 957  F724
+ 958  F724              MSG_RENY:
+ 959  F724 52 45 4E 41  		DB		'RENAME OK'
+ 959  F728 4D 45 20 4F
+ 959  F72C 4B
+ 960  F72D 0D           		DB		0DH
+ 961  F72E
+ 962  F72E              MSG_AD1:
+ 963  F72E 41 44 52 53  		DB		'ADRS +0 +1 +2 +3 +4 +5 +6 +7 01234567'
+ 963  F732 20 2B 30 20
+ 963  F736 2B 31 20 2B
+ 963  F73A 32 20 2B 33
+ 963  F73E 20 2B 34 20
+ 963  F742 2B 35 20 2B
+ 963  F746 36 20 2B 37
+ 963  F74A 20 30 31 32
+ 963  F74E 33 34 35 36
+ 963  F752 37
+ 964  F753 0D           		DB		0DH
+ 965  F754
+ 966  F754              MSG_AD2:
+ 967  F754 4E 45 58 54  		DB		'NEXT:ANY BACK:B BREAK:SHIFT+BREAK'
+ 967  F758 3A 41 4E 59
+ 967  F75C 20 42 41 43
+ 967  F760 4B 3A 42 20
+ 967  F764 42 52 45 41
+ 967  F768 4B 3A 53 48
+ 967  F76C 49 46 54 2B
+ 967  F770 42 52 45 41
+ 967  F774 4B
+ 968  F775 0D           		DB		0DH
+ 969  F776
+ 970  F776              MSG_CPY:
+ 971  F776 43 4F 50 59  		DB		'COPY OK'
+ 971  F77A 20 4F 4B
+ 972  F77D 0D           		DB		0DH
+ 973  F77E
+ 974  F77E              MSG_FDW:
+ 975  F77E 2A 46 44 57  		DB		'*FDW '
+ 975  F782 20
+ 976  F783 0D           		DB		0DH
+ 977  F784
+ 978  F784              MSG99:
+ 979  F784 20 45 52 52  		DB		' ERROR'
+ 979  F788 4F 52
+ 980  F78A 0D           		DB		0DH
+ 981  F78B
+ 982  F78B              DEFNAME:
+ 983  F78B 30 30 30 30  		DB		'0000'
+ 984  F78F 0D           		DB		0DH
+ 985  F790              NEND:
+ 986  F790
+ 987  F790              DEFDIR:
+ 988  F790 2A 46 44 20  		DB		'*FD  '
+ 988  F794 20
+ 989  F795              DEND:
+ 990  F795
+ 991  F795              ;*********************** 0436H MONITOR write information alternative processing ************
+ 992  F795              MSHED:
+ 993  F795 F3           		DI
+ 994  F796 D5           		PUSH	DE
+ 995  F797 C5           		PUSH	BC
+ 996  F798 E5           		PUSH	HL
+ 997  F799 CD 82 F0     		CALL	INIT
+ 998  F79C 3E 91        		LD		A,91H      ;HEADER SAVE command 91H
+ 999  F79E CD 3A F9     		CALL	MCMD       ;Send command code
+1000  F7A1 A7           		AND		A          ;ERROR if not 00
+1001  F7A2 C2 46 F9     		JP		NZ,MERR
+1002  F7A5
+1003  F7A5              ;S-OS SWORD and 8080 text editor & assembler pad the end of filename with 20h, so fix to 0dh
+1004  F7A5 06 11        		LD		B,11H
+1005  F7A7 21 01 11     		LD		HL,FNAME+10H     ;Filename
+1006  F7AA 3E 0D        		LD		A,0DH            ;Always set 0DH at 17th character
+1007  F7AC 77           		LD		(HL),A
+1008  F7AD 7E           MSH0:	LD		A,(HL)
+1009  F7AE FE 0D        		CP		0DH              ;If 0DH, check previous character
+1010  F7B0 28 07        		JR		Z,MSH1
+1011  F7B2 FE 20        		CP		20H              ;If 20H, set 0DH and check previous character
+1012  F7B4 20 07        		JR		NZ,MSH2          ;If neither 0DH nor 20H, end
+1013  F7B6 3E 0D        		LD		A,0DH
+1014  F7B8 77           		LD		(HL),A
+1015  F7B9
+1016  F7B9 2B           MSH1:	DEC		HL
+1017  F7BA 05           		DEC		B
+1018  F7BB 20 F0        		JR		NZ,MSH0
+1019  F7BD
+1020  F7BD CD 06 00     MSH2:	CALL	LETLN
+1021  F7C0 11 D6 F5     		LD		DE,WRMSG   ;'WRITING '
+1022  F7C3 CD 15 00     		CALL	MSGPR        ;Display message
+1023  F7C6 11 F1 10     		LD		DE,FNAME     ;Filename
+1024  F7C9 CD 15 00     		CALL	MSGPR       ;Display message
+1025  F7CC
+1026  F7CC 21 F0 10     		LD		HL,IBUFE
+1027  F7CF 06 80        		LD		B,80H
+1028  F7D1 7E           MSH3:	LD		A,(HL)     ;Send information block
+1029  F7D2 CD 5F F5     		CALL	SNDBYTE
+1030  F7D5 23           		INC		HL
+1031  F7D6 05           		DEC		B
+1032  F7D7 20 F8        		JR		NZ,MSH3
+1033  F7D9
+1034  F7D9 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1035  F7DC A7           		AND		A          ;ERROR if not 00
+1036  F7DD C2 46 F9     		JP		NZ,MERR
+1037  F7E0
+1038  F7E0 C3 41 F9     		JP		MRET       ;Normal RETURN
+1039  F7E3
+1040  F7E3              ;******************** 0475H MONITOR write data alternative processing **********************
+1041  F7E3              MSDAT:
+1042  F7E3 F3           		DI
+1043  F7E4 D5           		PUSH	DE
+1044  F7E5 C5           		PUSH	BC
+1045  F7E6 E5           		PUSH	HL
+1046  F7E7 3E 92        		LD		A,92H      ;DATA SAVE command 92H
+1047  F7E9 CD 3A F9     		CALL	MCMD       ;Send command code
+1048  F7EC A7           		AND		A          ;ERROR if not 00
+1049  F7ED C2 46 F9     		JP		NZ,MERR
+1050  F7F0
+1051  F7F0 21 02 11     		LD		HL,FSIZE   ;Send FSIZE
+1052  F7F3 7E           		LD		A,(HL)
+1053  F7F4 CD 5F F5     		CALL	SNDBYTE
+1054  F7F7 23           		INC		HL
+1055  F7F8 7E           		LD		A,(HL)
+1056  F7F9 CD 5F F5     		CALL	SNDBYTE
+1057  F7FC
+1058  F7FC CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1059  F7FF A7           		AND		A          ;ERROR if not 00
+1060  F800 C2 46 F9     		JP		NZ,MERR
+1061  F803
+1062  F803 ED 5B 02 11  		LD		DE,(FSIZE)
+1063  F807 2A 04 11     		LD		HL,(SADRS)
+1064  F80A 7E           MSD1:	LD		A,(HL)
+1065  F80B CD 5F F5     		CALL	SNDBYTE      ;Send FSIZE bytes from SADRS. For split save, 0475H is called 256 bytes at a time targeting the file opened by 0436H immediately prior.
+1066  F80E 1B           		DEC		DE
+1067  F80F 7A           		LD		A,D
+1068  F810 B3           		OR		E
+1069  F811 23           		INC		HL
+1070  F812 20 F6        		JR		NZ,MSD1
+1071  F814
+1072  F814 C3 41 F9     		JP		MRET       ;Normal RETURN
+1073  F817
+1074  F817              ;************************** 04D8H MONITOR read information alternative processing *****************
+1075  F817              MLHED:
+1076  F817 F3           		DI
+1077  F818 D5           		PUSH	DE
+1078  F819 C5           		PUSH	BC
+1079  F81A E5           		PUSH	HL
+1080  F81B CD 82 F0     		CALL	INIT
+1081  F81E
+1082  F81E 3E 00        		LD		A,00H
+1083  F820 11 00 00     		LD		DE,0000H
+1084  F823 CD 33 00     		CALL	TIMST
+1085  F826
+1086  F826 06 08        		LD		B,08H      ;Fill LBUF with 0DH to indicate no filename specified
+1087  F828 11 A3 11     		LD		DE,LBUF
+1088  F82B 3E 0D        		LD		A,0DH
+1089  F82D 12           MLH0:	LD		(DE),A
+1090  F82E 13           		INC		DE
+1091  F82F 05           		DEC		B
+1092  F830 20 FB        		JR		NZ,MLH0
+1093  F832
+1094  F832 3E 03        		LD		A,03H          ;Delete 3 characters to clear one line, output 37 characters
+1095  F834 32 71 11     		LD		(DSPX),A
+1096  F837 3E C7        		LD		A,0C7H
+1097  F839 CD DC 0D     		CALL	DPCT
+1098  F83C CD DC 0D     		CALL	DPCT
+1099  F83F CD DC 0D     		CALL	DPCT
+1100  F842 11 FE F6     MLH6:	LD		DE,MSG_DNAME   ;'DOS FILE:'
+1101  F845 CD 15 00     		CALL	MSGPR
+1102  F848 3E 09        		LD		A,09H          ;Return cursor to 9th character position
+1103  F84A 32 71 11     		LD		(DSPX),A
+1104  F84D
+1105  F84D 11 AE 11     		LD		DE,MBUF    ;Workaround for specifying filename. As LOAD command, input newline with no filename, then shift line buffer position to enter DOS filename.
+1106  F850 CD 03 00     		CALL	GETL
+1107  F853
+1108  F853 11 B7 11     		LD		DE,MBUF+9
+1109  F856
+1110  F856 1A           		LD		A,(DE)
+1111  F857              ;**** If first character of filename is '*', proceed to extended command processing ****
+1112  F857 FE 2A        		CP		'*'
+1113  F859 28 45        		JR		Z,MLHCMD
+1114  F85B
+1115  F85B 3E 93        		LD		A,93H      ;HEADER LOAD command 93H
+1116  F85D CD 3A F9     		CALL	MCMD       ;Send command code
+1117  F860 A7           		AND		A          ;ERROR if not 00
+1118  F861 C2 46 F9     		JP		NZ,MERR
+1119  F864
+1120  F864              MLH1:
+1121  F864 1A           		LD		A,(DE)
+1122  F865 FE 20        		CP		20H                 ;Skip leading spaces up to filename
+1123  F867 20 03        		JR		NZ,MLH2
+1124  F869 13           		INC		DE
+1125  F86A 18 F8        		JR		MLH1
+1126  F86C
+1127  F86C 06 20        MLH2:	LD		B,20H
+1128  F86E 1A           MLH4:	LD		A,(DE)     ;Send FNAME
+1129  F86F CD 5F F5     		CALL	SNDBYTE
+1130  F872 13           		INC		DE
+1131  F873 05           		DEC		B
+1132  F874 20 F8        		JR		NZ,MLH4
+1133  F876 3E 0D        		LD		A,0DH
+1134  F878 CD 5F F5     		CALL	SNDBYTE
+1135  F87B
+1136  F87B CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1137  F87E A7           		AND		A          ;ERROR if not 00
+1138  F87F C2 46 F9     		JP		NZ,MERR
+1139  F882
+1140  F882 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1141  F885 A7           		AND		A          ;ERROR if not 00
+1142  F886 C2 46 F9     		JP		NZ,MERR
+1143  F889
+1144  F889 21 F0 10     		LD		HL,IBUFE
+1145  F88C 06 80        		LD		B,80H
+1146  F88E CD 4C F5     MLH5:	CALL	RCVBYTE    ;Receive the read information block
+1147  F891 77           		LD		(HL),A
+1148  F892 23           		INC		HL
+1149  F893 05           		DEC		B
+1150  F894 20 F8        		JR		NZ,MLH5
+1151  F896
+1152  F896 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1153  F899 A7           		AND		A          ;ERROR if not 00
+1154  F89A C2 46 F9     		JP		NZ,MERR
+1155  F89D
+1156  F89D C3 41 F9     		JP		MRET       ;Normal RETURN
+1157  F8A0
+1158  F8A0              ;**************************** In-application SD-CARD operation processing **********************
+1159  F8A0              MLHCMD:
+1160  F8A0              ;**** Save HL, DE, BC registers ****
+1161  F8A0 E5           		PUSH	HL
+1162  F8A1 D5           		PUSH	DE
+1163  F8A2 C5           		PUSH	BC
+1164  F8A3 13           		INC		DE
+1165  F8A4 06 03        		LD		B,03H
+1166  F8A6              ;**** FDL command ****
+1167  F8A6 21 00 F9     		LD		HL,CMD1
+1168  F8A9 CD EC F8     		CALL	CMPSTR
+1169  F8AC 28 05        		JR		Z,MLHCMD2
+1170  F8AE C1           		POP		BC
+1171  F8AF D1           		POP		DE
+1172  F8B0 E1           		POP		HL
+1173  F8B1              ;**** Return to filename input ****
+1174  F8B1 18 8F        		JR		MLH6
+1175  F8B3
+1176  F8B3              MLHCMD2:
+1177  F8B3 13           		INC		DE
+1178  F8B4 13           		INC		DE
+1179  F8B5 13           		INC		DE
+1180  F8B6 21 FE F6     		LD		HL,MSG_DNAME         ;Prefix 'DOS FILE:' to allow cursor movement and execution with RETURN
+1181  F8B9 01 09 00     		LD		BC,MSG_DNAMEEND-MSG_DNAME
+1182  F8BC              ;**** Call FDL command ****
+1183  F8BC CD 2E F2     		CALL	DIRLIST
+1184  F8BF A7           		AND		A          ;ERROR if not 00
+1185  F8C0 20 06        		JR		NZ,SERR
+1186  F8C2 C1           		POP		BC
+1187  F8C3 D1           		POP		DE
+1188  F8C4 E1           		POP		HL
+1189  F8C5              ;**** Return to filename input ****
+1190  F8C5 C3 42 F8     		JP		MLH6
+1191  F8C8
+1192  F8C8              ;******* Error processing for in-application SD-CARD operation **************
+1193  F8C8              SERR:
+1194  F8C8 FE F0        		CP		0F0H
+1195  F8CA 20 05        		JR		NZ,SERR3
+1196  F8CC 11 48 F6     		LD		DE,MSG_F0
+1197  F8CF 18 0F        		JR		SERRMSG
+1198  F8D1
+1199  F8D1 FE F1        SERR3:	CP		0F1H
+1200  F8D3 20 05        		JR		NZ,SERR99
+1201  F8D5 11 61 F6     		LD		DE,MSG_F1
+1202  F8D8 18 06        		JR		SERRMSG
+1203  F8DA
+1204  F8DA CD C3 03     SERR99:	CALL	PRTBYT
+1205  F8DD 11 84 F7     		LD		DE,MSG99
+1206  F8E0
+1207  F8E0              SERRMSG:
+1208  F8E0 CD 15 00     		CALL	MSGPR
+1209  F8E3 CD 06 00     		CALL	LETLN
+1210  F8E6 C1           		POP		BC
+1211  F8E7 D1           		POP		DE
+1212  F8E8 E1           		POP		HL
+1213  F8E9              ;**** Return to filename input ****
+1214  F8E9 C3 42 F8     		JP		MLH6
+1215  F8EC
+1216  F8EC              ;**** Command string comparison ****
+1217  F8EC              CMPSTR:
+1218  F8EC C5           		PUSH	BC
+1219  F8ED D5           		PUSH	DE
+1220  F8EE 1A           CMP1:	LD		A,(DE)
+1221  F8EF BE           		CP		(HL)
+1222  F8F0 20 0B        		JR		NZ,CMP2
+1223  F8F2 05           		DEC		B
+1224  F8F3 28 08        		JR		Z,CMP2
+1225  F8F5 FE 0D        		CP		0Dh
+1226  F8F7 28 04        		JR		Z,CMP2
+1227  F8F9 13           		INC		DE
+1228  F8FA 23           		INC		HL
+1229  F8FB 18 F1        		JR		CMP1
+1230  F8FD D1           CMP2:	POP		DE
+1231  F8FE C1           		POP		BC
+1232  F8FF C9           		RET
+1233  F900
+1234  F900              ;**** Command list ****
+1235  F900              ; Reserved for future expansion
+1236  F900 46 44 4C 0D  CMD1:	DB		'FDL',0DH
+1237  F904
+1238  F904
+1239  F904              ;**************************** 04F8H MONITOR read data alternative processing ********************
+1240  F904              MLDAT:
+1241  F904 F3           		DI
+1242  F905 D5           		PUSH	DE
+1243  F906 C5           		PUSH	BC
+1244  F907 E5           		PUSH	HL
+1245  F908 3E 94        		LD		A,94H      ;DATA LOAD command 94H
+1246  F90A CD 3A F9     		CALL	MCMD       ;Send command code
+1247  F90D A7           		AND		A          ;ERROR if not 00
+1248  F90E C2 46 F9     		JP		NZ,MERR
+1249  F911
+1250  F911 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1251  F914 A7           		AND		A          ;ERROR if not 00
+1252  F915 C2 46 F9     		JP		NZ,MERR
+1253  F918
+1254  F918 CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1255  F91B A7           		AND		A          ;ERROR if not 00
+1256  F91C C2 46 F9     		JP		NZ,MERR
+1257  F91F
+1258  F91F 11 02 11     		LD		DE,FSIZE   ;Send FSIZE
+1259  F922 1A           		LD		A,(DE)
+1260  F923 CD 5F F5     		CALL	SNDBYTE
+1261  F926 13           		INC		DE
+1262  F927 1A           		LD		A,(DE)
+1263  F928 CD 5F F5     		CALL	SNDBYTE
+1264  F92B CD ED F0     		CALL	DBRCV      ;Receive FSIZE bytes of data and store from SADRS. For split load, 04F8H is called 256 bytes at a time with SADRS incremented, targeting the file opened by 0436H immediately prior.
+1265  F92E
+1266  F92E CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1267  F931 A7           		AND		A          ;ERROR if not 00
+1268  F932 C2 46 F9     		JP		NZ,MERR
+1269  F935
+1270  F935 18 0A        		JR		MRET       ;Normal RETURN
+1271  F937
+1272  F937              ;************************** 0588H VRFY CMT verify alternative processing *******************
+1273  F937              MVRFY:
+1274  F937 F3           		DI
+1275  F938 AF           		XOR		A          ;Normal completion flag
+1276  F939              ;		EI
+1277  F939
+1278  F939 C9           		RET
+1279  F93A
+1280  F93A              ;******* Send command code for alternative processing (IN: A command code) **********
+1281  F93A              MCMD:
+1282  F93A              ;		PUSH	AF
+1283  F93A              ;		CALL	INIT
+1284  F93A              ;		POP		AF
+1285  F93A CD 5F F5     		CALL	SNDBYTE    ;Send command code
+1286  F93D CD 4C F5     		CALL	RCVBYTE    ;Get status (00H=OK)
+1287  F940 C9           		RET
+1288  F941
+1289  F941              ;****** Normal RETURN processing for alternative processing **********
+1290  F941 E1           MRET:	POP		HL
+1291  F942 C1           		POP		BC
+1292  F943 D1           		POP		DE
+1293  F944 AF           		XOR		A          ;Normal completion flag
+1294  F945              ;		EI
+1295  F945
+1296  F945 C9           		RET
+1297  F946
+1298  F946              ;******* Error processing for alternative processing **************
+1299  F946              MERR:
+1300  F946 FE F0        		CP		0F0H
+1301  F948 20 05        		JR		NZ,MERR3
+1302  F94A 11 48 F6     		LD		DE,MSG_F0
+1303  F94D 18 0F        		JR		MERRMSG
+1304  F94F              ;No file type code check in alternative processing
+1305  F94F              ;MERR2:	CP		0F2H
+1306  F94F              ;		JR		NZ,MERR3
+1307  F94F              ;		LD		DE,MSG_F2
+1308  F94F              ;		JR		MERRMSG
+1309  F94F
+1310  F94F FE F1        MERR3:	CP		0F1H
+1311  F951 20 05        		JR		NZ,MERR99
+1312  F953 11 61 F6     		LD		DE,MSG_F1
+1313  F956 18 06        		JR		MERRMSG
+1314  F958
+1315  F958 CD C3 03     MERR99:	CALL	PRTBYT
+1316  F95B 11 84 F7     		LD		DE,MSG99
+1317  F95E
+1318  F95E              MERRMSG:
+1319  F95E CD 15 00     		CALL	MSGPR
+1320  F961 CD 06 00     		CALL	LETLN
+1321  F964 E1           		POP		HL
+1322  F965 C1           		POP		BC
+1323  F966 D1           		POP		DE
+1324  F967 3E 02        		LD		A,02H
+1325  F969 37           		SCF
+1326  F96A              ;		EI
+1327  F96A
+1328  F96A C9           		RET
+1329  F96B
+1330  F96B              		END
+# file closed: FD_rom1.english.asm

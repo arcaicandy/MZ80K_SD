@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Assemble Z80",
+            "type": "shell",
+            "command": "F:/Program Files (x86)/sjasmplus/sjasmplus.exe",
+            "args": [
+                "--lst=${fileDirname}/${fileBasenameNoExtension}.prn",
+                "--raw=${fileDirname}/${fileBasenameNoExtension}.bin",
+                "${file}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        }
+    ]
+}

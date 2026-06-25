@@ -1,0 +1,62 @@
+{
+  "$schema": "https://images.onerom.org/configs/schema.json",
+  "version": 1,
+  "name": "MZ-80K",
+  "description": "Stock Monitor (patched for MZ80K-SD), Stock Monitor, Ram tester and Enhanced Monitor",
+  "categories": [
+    "computer",
+    "firmware",
+    "sharp",
+    "mz-80k"
+  ],
+  "rom_sets": [
+    {
+      "type": "single",
+      "roms": [
+        {
+          "description": "Stock monitor ROM - SP1002 Patched for MZ80K-SD",
+          "file": "bin/sp1002-MZ80K-SD.rom",
+          "type": "2332",
+          "cs1": "active_low",
+          "cs2": "active_high"
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "roms": [
+        {
+          "description": "Stock monitor ROM - SP1002",
+          "file": "bin/sp1002.rom",
+          "type": "2332",
+          "cs1": "active_low",
+          "cs2": "active_high"
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "roms": [
+        {
+          "description": "RAM Tester ROM - ipl",
+          "file": "bin/ipl.rom",
+          "type": "2332",
+          "cs1": "active_low",
+          "cs2": "active_high"
+        }
+      ]
+    },
+    {
+      "type": "single",
+      "roms": [
+        {
+          "description": "New monitor ROM - 80ktc",
+          "file": "bin/80ktc.rom",
+          "type": "2332",
+          "cs1": "active_low",
+          "cs2": "active_high"
+        }
+      ]
+    }
+  ]
+}
